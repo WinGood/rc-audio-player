@@ -2,6 +2,11 @@
 
 @implementation HWPHello
 
+static NSString *_artist;
+static NSString *_title;
+static NSString *_album;
+static NSString *_cover;
+
 - (void)pluginInitialize
 {
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
@@ -11,27 +16,20 @@
     if (!ok) {
         NSLog(@"%s setCategoryError=%@", __PRETTY_FUNCTION__, setCategoryError);
     }
-    
+
     [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
     [commandCenter.playCommand addTarget:self action:@selector(onPlay:)];
     [commandCenter.pauseCommand addTarget:self action:@selector(onPause:)];
     [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
     [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
-
-    
-//    [commandCenter.pauseCommand addTarget:self action:@selector(onPause:)];
-//    [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
-//    [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
-
 }
 
 - (void)initSong:(CDVInvokedUrlCommand*)command
 {
-
     callbackID = command.callbackId;
 //    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    
+
     NSString *url = [command.arguments objectAtIndex:0];
     NSString *artist = [command.arguments objectAtIndex:1];
     NSString *title = [command.arguments objectAtIndex:2];
@@ -39,23 +37,30 @@
     NSString *cover = [command.arguments objectAtIndex:4];
 //    NSNumber *duration = [command.arguments objectAtIndex:5];
 //    NSNumber *elapsed = [command.arguments objectAtIndex:6];
-    
+
     NSURL *soundUrl = [[NSURL alloc] initWithString:url];
     NSLog(@"initSong, %@", soundUrl);
-    
-    [songInfo setObject:soundUrl forKey:@"url"];
-    [songInfo setObject:artist forKey:@"artist"];
-    [songInfo setObject:title forKey:@"title"];
-    [songInfo setObject:album forKey:@"album"];
-    [songInfo setObject:cover forKey:@"cover"];
-        
+    NSLog(@"Song title %@", title);
+
+    _artist = artist;
+    _title = title;
+    _album = album;
+    _cover = cover;
+//
+//    [songInfo setObject:soundUrl forKey:@"url"];
+//    [songInfo setObject:artist forKey:@"artist"];
+//    [songInfo setObject:title forKey:@"title"];
+//    [songInfo setObject:album forKey:@"album"];
+//    [songInfo setObject:cover forKey:@"cover"];
+
     self.audioItem = [AVPlayerItem playerItemWithURL:soundUrl];
-    self.audioPlayer = [AVPlayer playerWithPlayerItem:self.audioItem];
+//    self.audioPlayer = [AVPlayer playerWithPlayerItem:self.audioItem];
+    self.audioPlayer = [[AVPlayer alloc] initWithPlayerItem:self.audioItem];
     self.audioPlayer.automaticallyWaitsToMinimizeStalling = false;
-        
+
     [[NSNotificationCenter defaultCenter]
     addObserver:self selector:@selector(playerItemDidReachEnd:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.audioItem];
-        
+
     [[NSNotificationCenter defaultCenter]
     addObserver:self selector:@selector(playerItemStalled:) name:AVPlayerItemPlaybackStalledNotification object:self.audioItem];
 }
@@ -71,18 +76,60 @@
 
 - (void)play:(CDVInvokedUrlCommand*)command
 {
-    NSLog(@"play");
+    NSLog(@"play, %@", _title);
     [self.audioPlayer play];
-    
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (NSClassFromString(@"MPNowPlayingInfoCenter")) {
-            MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
-            center.nowPlayingInfo = [NSDictionary dictionaryWithObjectsAndKeys:
-                                     @"test", MPMediaItemPropertyArtist,
-                                     @"test", MPMediaItemPropertyTitle,
-                                     @"test", MPMediaItemPropertyAlbumTitle,
-//                                     self.audioItem.duration, MPMediaItemPropertyPlaybackDuration,
-                                     [NSNumber numberWithFloat:1.0f],MPNowPlayingInfoPropertyPlaybackRate, nil];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        UIImage *image = nil;
+        // check whether cover path is present
+        if (![_cover isEqual: @""]) {
+            // cover is remote file
+            if ([_cover hasPrefix: @"http://"] || [_cover hasPrefix: @"https://"]) {
+                NSURL *imageURL = [NSURL URLWithString:_cover];
+                NSData *imageData = [NSData dataWithContentsOfURL:imageURL];
+                image = [UIImage imageWithData:imageData];
+            }
+            // cover is full path to local file
+            else if ([_cover hasPrefix: @"file://"]) {
+                NSString *fullPath = [_cover stringByReplacingOccurrencesOfString:@"file://" withString:@""];
+                BOOL fileExists = [[NSFileManager defaultManager] fileExistsAtPath:fullPath];
+                if (fileExists) {
+                    image = [[UIImage alloc] initWithContentsOfFile:fullPath];
+                }
+            }
+            // cover is relative path to local file
+            else {
+                NSString *basePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+                NSString *fullPath = [NSString stringWithFormat:@"%@%@", basePath, _cover];
+                BOOL fileExists = [[NSFileManager defaultManager] fileExistsAtPath:fullPath];
+                if (fileExists) {
+                    image = [UIImage imageNamed:fullPath];
+                }
+            }
+        }
+        else {
+            // default named "no-image"
+            image = [UIImage imageNamed:@"no-image"];
+        }
+
+        // check whether image is loaded
+        CGImageRef cgref = [image CGImage];
+        CIImage *cim = [image CIImage];
+        if (cim != nil || cgref != NULL) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (NSClassFromString(@"MPNowPlayingInfoCenter")) {
+                    MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc] initWithImage: image];
+                    MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
+                    center.nowPlayingInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+                                             _artist, MPMediaItemPropertyArtist,
+                                             _title, MPMediaItemPropertyTitle,
+                                             _album, MPMediaItemPropertyAlbumTitle,
+                                             artwork, MPMediaItemPropertyArtwork,
+//                                             duration, MPMediaItemPropertyPlaybackDuration,
+//                                             elapsed, MPNowPlayingInfoPropertyElapsedPlaybackTime,
+                                             [NSNumber numberWithFloat:1.0f], MPNowPlayingInfoPropertyPlaybackRate, nil];
+                }
+            });
         }
     });
 }
@@ -96,47 +143,14 @@
 - (void)sendEvent:(NSString*)event
 {
     NSLog(@"Event, %@", event);
-    
+
     NSDictionary *dict = @{@"type": event};
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options: 0 error: nil];
     NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-    
+
     plresult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:jsonString];
     [plresult setKeepCallbackAsBool:YES];
     [self.commandDelegate sendPluginResult:plresult callbackId:callbackID];
-    
-//    if (self.callbackId != nil) {
-//        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:event];
-//        [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
-//        [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
-//    }
-//    
-//    if ([event isEqual: @"pause"]) {
-//        [self pause:nil];
-//    }
-//    
-//    if ([event isEqual: @"play"]) {
-//        [self play:nil];
-//    }
-//    
-//    if ([event isEqual:@"previousTrack"]) {
-//        
-//    }
-//    
-//    if ([event isEqual:@"nextTrack"]) {
-//        
-//    }
-    
-//    NSDictionary *dict = @{@"subtype": event};
-//    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options: 0 error: nil];
-//    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-//    NSString *jsStatement = [NSString stringWithFormat:@"if(window.hello)hello.receiveRemoteEvent(%@);", jsonString];
-//    
-//#ifdef __CORDOVA_4_0_0
-//    [self.webViewEngine evaluateJavaScript:jsStatement completionHandler:nil];
-//#else
-//    [self.webView stringByEvaluatingJavaScriptFromString:jsStatement];
-//#endif
 }
 
 - (void)onPlay:(MPRemoteCommandHandlerStatus*)event { [self sendEvent:@"play"]; }
