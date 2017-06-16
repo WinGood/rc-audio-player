@@ -1,8 +1,8 @@
 /*global cordova, module*/
 
 module.exports = {
-  initSong: function(url, successCallback, errorCallback) {
-    cordova.exec(successCallback, errorCallback, "Hello", "initSong", [url]);
+  initSong: function(params, successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, "Hello", "initSong", params);
   },
   play: function(successCallback, errorCallback) {
     cordova.exec(successCallback, errorCallback, "Hello", "play");
