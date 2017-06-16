@@ -5,14 +5,15 @@
 #import <MediaPlayer/MPMediaItem.h>
 
 @interface HWPHello : CDVPlugin {
-    NSString *callbackId;
+    NSString *callbackID;
+    CDVPluginResult *plresult;
+    NSMutableDictionary *songInfo;
 }
 
 - (void) initSong:(CDVInvokedUrlCommand*)command;
 - (void) play:(CDVInvokedUrlCommand*)command;
 - (void) pause:(CDVInvokedUrlCommand*)command;
 
-@property (nonatomic, copy) NSString *callbackId;
 @property (strong, nonatomic) AVPlayerItem *audioItem;
 @property (strong, nonatomic) AVPlayer *audioPlayer;
 
