@@ -10,6 +10,7 @@ static bool isPlaying = false;
 
 - (void)pluginInitialize
 {
+    // Playback audio in background mode
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
     BOOL ok;
     NSError *setCategoryError = nil;
@@ -23,14 +24,15 @@ static bool isPlaying = false;
     NSNumber *shouldScrub = [NSNumber numberWithBool:YES];
     [[[MPRemoteCommandCenter sharedCommandCenter] changePlaybackPositionCommand]
      performSelector:@selector(setCanBeControlledByScrubbing:) withObject:shouldScrub];
+    
+    // Listeners for events from NowPlaying widget
     [commandCenter.changePlaybackPositionCommand addTarget:self action:@selector(onChangePlayback:)];
     [commandCenter.playCommand addTarget:self action:@selector(onPlay:)];
     [commandCenter.pauseCommand addTarget:self action:@selector(onPause:)];
     [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
     [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
-    [commandCenter.seekBackwardCommand addTarget:self action:@selector(onSeekBackwardTrack:)];
-    [commandCenter.seekForwardCommand addTarget:self action:@selector(onSeekForwardTrack:)];
     
+    // Listener for event that fired when song has stopped playing
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.audioItem];
 }
 
@@ -38,15 +40,13 @@ static bool isPlaying = false;
 {
     callbackID = command.callbackId;
     center = [MPNowPlayingInfoCenter defaultCenter];
-//    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
+    // Data from JS env
     NSString *url = [command.arguments objectAtIndex:0];
     NSString *artist = [command.arguments objectAtIndex:1];
     NSString *title = [command.arguments objectAtIndex:2];
     NSString *album = [command.arguments objectAtIndex:3];
     NSString *cover = [command.arguments objectAtIndex:4];
-//    NSNumber *duration = [command.arguments objectAtIndex:5];
-//    NSNumber *elapsed = [command.arguments objectAtIndex:6];
 
     NSURL *soundUrl = [[NSURL alloc] initWithString:url];
     AVURLAsset* audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:nil];
@@ -58,7 +58,7 @@ static bool isPlaying = false;
     _title = title;
     _album = album;
     _cover = cover;
-//
+    
 //    [songInfo setObject:soundUrl forKey:@"url"];
 //    [songInfo setObject:artist forKey:@"artist"];
 //    [songInfo setObject:title forKey:@"title"];
@@ -66,25 +66,9 @@ static bool isPlaying = false;
 //    [songInfo setObject:cover forKey:@"cover"];
 
     self.audioItem = [AVPlayerItem playerItemWithAsset:audioAsset];
-//    self.audioPlayer = [AVPlayer playerWithPlayerItem:self.audioItem];
     self.audioPlayer = [[AVPlayer alloc] initWithPlayerItem:self.audioItem];
     self.audioPlayer.automaticallyWaitsToMinimizeStalling = false;
     self.audioPlayer.allowsExternalPlayback = false;
-
-    [[NSNotificationCenter defaultCenter]
-    addObserver:self selector:@selector(playerItemDidReachEnd:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.audioItem];
-
-    [[NSNotificationCenter defaultCenter]
-    addObserver:self selector:@selector(playerItemStalled:) name:AVPlayerItemPlaybackStalledNotification object:self.audioItem];
-}
-
-- (void)playerItemDidReachEnd:(NSNotification *)notification{
-    [self.audioItem seekToTime:kCMTimeZero];
-    NSLog(@"AudioEnded");
-//    [self sendEventWithName:@"AudioEnded" body:@{@"event": @"finished"}];
-}
-- (void)playerItemStalled:(NSNotification *)notification{
-    [self.audioPlayer play];
 }
 
 - (void)play:(CDVInvokedUrlCommand*)command
@@ -106,6 +90,7 @@ static bool isPlaying = false;
 {
     NSLog(@"Event, %@", event);
 
+    // Send data back in JS env
     NSDictionary *dict = @{@"type": event};
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options: 0 error: nil];
     NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
@@ -120,14 +105,6 @@ static bool isPlaying = false;
 - (void)onNextTrack:(MPRemoteCommandHandlerStatus*)event { [self sendEvent:@"nextTrack"]; }
 - (void)onPreviousTrack:(MPRemoteCommandHandlerStatus*)event { [self sendEvent:@"previousTrack"]; }
 
-- (void)onSeekBackwardTrack:(MPRemoteCommandHandlerStatus*)event {
-    [self sendEvent:@"seekBackwardTrack"];
-}
-
-- (void)onSeekForwardTrack:(MPRemoteCommandHandlerStatus*)event {
-    [self sendEvent:@"seekForwardTrack"];
-}
-
 - (MPRemoteCommandHandlerStatus)setCanBeControlledByScrubbing:(MPChangePlaybackPositionCommandEvent*)event {
     return MPRemoteCommandHandlerStatusSuccess;
 }
@@ -138,12 +115,12 @@ static bool isPlaying = false;
     float audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
     NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
     
+    // seek to in player
     [self.audioPlayer seekToTime:seekTime];
     
+    // update playnow widget
     NSMutableDictionary *playInfo = [NSMutableDictionary dictionaryWithDictionary:[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo];
-    
     [playInfo setObject:elapsed forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
-    
     center.nowPlayingInfo = playInfo;
     
     return MPRemoteCommandHandlerStatusSuccess;
@@ -158,8 +135,6 @@ static bool isPlaying = false;
     
     NSString *duration = [[NSNumber numberWithFloat:audioDurationSeconds] stringValue];
     NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
-    
-//    NSLog(@"duration, %@, %@", duration, elapsed);
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         UIImage *image = nil;
