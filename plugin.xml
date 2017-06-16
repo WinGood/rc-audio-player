@@ -3,43 +3,65 @@
         id="com.audio.player"
         version="0.7.0">
 
-  <name>Hello</name>
+    <name>Hello</name>
 
-  <engines>
-    <engine name="cordova" version=">=3.4.0"/>
-  </engines>
+    <engines>
+        <engine name="cordova" version=">=3.4.0"/>
+    </engines>
 
-  <asset src="www/hello.js" target="js/hello.js"/>
+    <asset src="www/hello.js" target="js/hello.js"/>
 
-  <js-module src="www/hello.js" name="hello">
-    <clobbers target="hello" />
-  </js-module>
+    <js-module src="www/hello.js" name="hello">
+        <clobbers target="hello"/>
+    </js-module>
 
-  <platform name="android">
+    <platform name="android">
 
-    <config-file target="res/xml/config.xml" parent="/*">
-      <feature name="Hello">
-        <param name="android-package" value="com.example.plugin.Hello"/>
-      </feature>
-    </config-file>
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="Hello">
+                <param name="android-package" value="com.example.plugin.Hello"/>
+            </feature>
+        </config-file>
 
-    <source-file src="src/android/Hello.java" target-dir="src/com/example/plugin/"/>
-  </platform>
+        <source-file src="src/android/Hello.java"
+                     target-dir="src/com/example/plugin/"/>
+    </platform>
 
-  <platform name="ios">
-    
-    <config-file target="config.xml" parent="/widget">
-      <feature name="Hello">
-        <param name="ios-package" value="HWPHello" />
-      </feature>
-    </config-file>
+    <platform name="ios">
 
-    <header-file src="src/ios/HWPHello.h" target-dir="HelloPlugin"/>
-    <source-file src="src/ios/HWPHello.m" target-dir="HelloPlugin"/>
-  </platform>
+        <config-file target="config.xml" parent="/widget">
+            <feature name="Hello">
+                <param name="ios-package" value="HWPHello"/>
+            </feature>
+        </config-file>
 
-  <platform name="wp7">
-    <source-file src="src/wp7/Hello.cs"/>
-  </platform>
+        <header-file src="src/ios/HWPHello.h" target-dir="HelloPlugin"/>
+        <source-file src="src/ios/HWPHello.m" target-dir="HelloPlugin"/>
+
+        <header-file src="src/ios/AVPlayerItem+MCCacheSupport.h" target-dir="HelloPlugin"/>
+        <source-file src="src/ios/AVPlayerItem+MCCacheSupport.m" target-dir="HelloPlugin"/>
+
+        <header-file src="src/ios/Classes/MCAVPlayerItemCacheFile.h" target-dir="HelloPlugin"/>
+        <source-file src="src/ios/Classes/MCAVPlayerItemCacheFile.m" target-dir="HelloPlugin"/>
+
+        <header-file src="src/ios/Classes/MCAVPlayerItemCacheLoader.h" target-dir="HelloPlugin"/>
+        <source-file src="src/ios/Classes/MCAVPlayerItemCacheLoader.m" target-dir="HelloPlugin"/>
+
+        <header-file src="src/ios/Classes/MCAVPlayerItemCacheTask.h" target-dir="HelloPlugin"/>
+        <source-file src="src/ios/Classes/MCAVPlayerItemCacheTask.m" target-dir="HelloPlugin"/>
+
+        <header-file src="src/ios/Classes/MCAVPlayerItemLocalCacheTask.h" target-dir="HelloPlugin"/>
+        <source-file src="src/ios/Classes/MCAVPlayerItemLocalCacheTask.m" target-dir="HelloPlugin"/>
+
+        <header-file src="src/ios/Classes/MCAVPlayerItemRemoteCacheTask.h" target-dir="HelloPlugin"/>
+        <source-file src="src/ios/Classes/MCAVPlayerItemRemoteCacheTask.m" target-dir="HelloPlugin"/>
+
+        <header-file src="src/ios/Classes/MCCacheSupportUtils.h" target-dir="HelloPlugin"/>
+        <source-file src="src/ios/Classes/MCCacheSupportUtils.m" target-dir="HelloPlugin"/>
+    </platform>
+
+    <platform name="wp7">
+        <source-file src="src/wp7/Hello.cs"/>
+    </platform>
 
 </plugin>
