@@ -4,10 +4,10 @@ module.exports = {
     initSong: function (url, successCallback, errorCallback) {
         cordova.exec(successCallback, errorCallback, "Hello", "initSong", [url]);
     },
-    play: function () {
+    play: function (successCallback, errorCallback) {
         cordova.exec(successCallback, errorCallback, "Hello", "play");
     },
-    pause: function () {
+    pause: function (successCallback, errorCallback) {
         cordova.exec(successCallback, errorCallback, "Hello", "pause");
     }
 };
