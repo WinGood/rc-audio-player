@@ -6,6 +6,7 @@ static NSString *_artist;
 static NSString *_title;
 static NSString *_album;
 static NSString *_cover;
+static bool isPlaying = false;
 
 - (void)pluginInitialize
 {
@@ -29,6 +30,8 @@ static NSString *_cover;
     [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
     [commandCenter.seekBackwardCommand addTarget:self action:@selector(onSeekBackwardTrack:)];
     [commandCenter.seekForwardCommand addTarget:self action:@selector(onSeekForwardTrack:)];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.audioItem];
 }
 
 - (void)initSong:(CDVInvokedUrlCommand*)command
@@ -94,6 +97,7 @@ static NSString *_cover;
 - (void)pause:(CDVInvokedUrlCommand*)command
 {
     NSLog(@"pause");
+    isPlaying = false;
     [self.audioPlayer pause];
     [self updateMusicControls:true];
 }
@@ -130,8 +134,18 @@ static NSString *_cover;
 
 - (MPRemoteCommandHandlerStatus)onChangePlayback:(MPChangePlaybackPositionCommandEvent*)event {
     NSLog(@"changePlaybackPosition to %f", event.positionTime);
-    CMTime seekTime = CMTimeMakeWithSeconds(event.positionTime, 1);
+    CMTime seekTime = CMTimeMakeWithSeconds(event.positionTime, 100000);
+    float audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
+    NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
+    
     [self.audioPlayer seekToTime:seekTime];
+    
+    NSMutableDictionary *playInfo = [NSMutableDictionary dictionaryWithDictionary:[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo];
+    
+    [playInfo setObject:elapsed forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
+    
+    center.nowPlayingInfo = playInfo;
+    
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
@@ -199,6 +213,11 @@ static NSString *_cover;
             });
         }
     });
+}
+
+-(void)itemDidFinishPlaying:(NSNotification *) notification {
+    NSLog(@"Song stopped");
+    [self sendEvent:@"nextTrack"];
 }
 
 -(void)dealloc {
