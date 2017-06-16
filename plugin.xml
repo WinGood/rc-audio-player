@@ -37,27 +37,6 @@
 
         <header-file src="src/ios/HWPHello.h" target-dir="HelloPlugin"/>
         <source-file src="src/ios/HWPHello.m" target-dir="HelloPlugin"/>
-
-        <header-file src="src/ios/AVPlayerItem+MCCacheSupport.h" target-dir="HelloPlugin"/>
-        <source-file src="src/ios/AVPlayerItem+MCCacheSupport.m" target-dir="HelloPlugin"/>
-
-        <header-file src="src/ios/Classes/MCAVPlayerItemCacheFile.h" target-dir="HelloPlugin"/>
-        <source-file src="src/ios/Classes/MCAVPlayerItemCacheFile.m" target-dir="HelloPlugin"/>
-
-        <header-file src="src/ios/Classes/MCAVPlayerItemCacheLoader.h" target-dir="HelloPlugin"/>
-        <source-file src="src/ios/Classes/MCAVPlayerItemCacheLoader.m" target-dir="HelloPlugin"/>
-
-        <header-file src="src/ios/Classes/MCAVPlayerItemCacheTask.h" target-dir="HelloPlugin"/>
-        <source-file src="src/ios/Classes/MCAVPlayerItemCacheTask.m" target-dir="HelloPlugin"/>
-
-        <header-file src="src/ios/Classes/MCAVPlayerItemLocalCacheTask.h" target-dir="HelloPlugin"/>
-        <source-file src="src/ios/Classes/MCAVPlayerItemLocalCacheTask.m" target-dir="HelloPlugin"/>
-
-        <header-file src="src/ios/Classes/MCAVPlayerItemRemoteCacheTask.h" target-dir="HelloPlugin"/>
-        <source-file src="src/ios/Classes/MCAVPlayerItemRemoteCacheTask.m" target-dir="HelloPlugin"/>
-
-        <header-file src="src/ios/Classes/MCCacheSupportUtils.h" target-dir="HelloPlugin"/>
-        <source-file src="src/ios/Classes/MCCacheSupportUtils.m" target-dir="HelloPlugin"/>
     </platform>
 
     <platform name="wp7">
