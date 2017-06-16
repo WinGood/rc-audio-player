@@ -29,10 +29,25 @@
 - (void)initSong:(CDVInvokedUrlCommand*)command
 {
 
+    callbackID = command.callbackId;
 //    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    NSString* url = [[command arguments] objectAtIndex:0];
+    
+    NSString *url = [command.arguments objectAtIndex:0];
+    NSString *artist = [command.arguments objectAtIndex:1];
+    NSString *title = [command.arguments objectAtIndex:2];
+    NSString *album = [command.arguments objectAtIndex:3];
+    NSString *cover = [command.arguments objectAtIndex:4];
+//    NSNumber *duration = [command.arguments objectAtIndex:5];
+//    NSNumber *elapsed = [command.arguments objectAtIndex:6];
+    
     NSURL *soundUrl = [[NSURL alloc] initWithString:url];
     NSLog(@"initSong, %@", soundUrl);
+    
+    [songInfo setObject:soundUrl forKey:@"url"];
+    [songInfo setObject:artist forKey:@"artist"];
+    [songInfo setObject:title forKey:@"title"];
+    [songInfo setObject:album forKey:@"album"];
+    [songInfo setObject:cover forKey:@"cover"];
         
     self.audioItem = [AVPlayerItem playerItemWithURL:soundUrl];
     self.audioPlayer = [AVPlayer playerWithPlayerItem:self.audioItem];
@@ -82,38 +97,46 @@
 {
     NSLog(@"Event, %@", event);
     
+    NSDictionary *dict = @{@"type": event};
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options: 0 error: nil];
+    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    
+    plresult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:jsonString];
+    [plresult setKeepCallbackAsBool:YES];
+    [self.commandDelegate sendPluginResult:plresult callbackId:callbackID];
+    
 //    if (self.callbackId != nil) {
 //        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:event];
 //        [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
 //        [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
 //    }
+//    
+//    if ([event isEqual: @"pause"]) {
+//        [self pause:nil];
+//    }
+//    
+//    if ([event isEqual: @"play"]) {
+//        [self play:nil];
+//    }
+//    
+//    if ([event isEqual:@"previousTrack"]) {
+//        
+//    }
+//    
+//    if ([event isEqual:@"nextTrack"]) {
+//        
+//    }
     
-    if ([event isEqual: @"pause"]) {
-        [self pause:nil];
-    }
-    
-    if ([event isEqual: @"play"]) {
-        [self play:nil];
-    }
-    
-    if ([event isEqual:@"previousTrack"]) {
-        
-    }
-    
-    if ([event isEqual:@"nextTrack"]) {
-        
-    }
-    
-    NSDictionary *dict = @{@"subtype": event};
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options: 0 error: nil];
-    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-    NSString *jsStatement = [NSString stringWithFormat:@"if(window.hello)hello.receiveRemoteEvent(%@);", jsonString];
-    
-#ifdef __CORDOVA_4_0_0
-    [self.webViewEngine evaluateJavaScript:jsStatement completionHandler:nil];
-#else
-    [self.webView stringByEvaluatingJavaScriptFromString:jsStatement];
-#endif
+//    NSDictionary *dict = @{@"subtype": event};
+//    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options: 0 error: nil];
+//    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+//    NSString *jsStatement = [NSString stringWithFormat:@"if(window.hello)hello.receiveRemoteEvent(%@);", jsonString];
+//    
+//#ifdef __CORDOVA_4_0_0
+//    [self.webViewEngine evaluateJavaScript:jsStatement completionHandler:nil];
+//#else
+//    [self.webView stringByEvaluatingJavaScriptFromString:jsStatement];
+//#endif
 }
 
 - (void)onPlay:(MPRemoteCommandHandlerStatus*)event { [self sendEvent:@"play"]; }
