@@ -6,6 +6,7 @@ static NSString *_artist;
 static NSString *_title;
 static NSString *_album;
 static NSString *_cover;
+static NSNumber *_isLoop;
 static bool isPlaying = false;
 static bool audioListenersApplied = false;
 static bool songIsLoaded = false;
@@ -67,10 +68,10 @@ static bool songIsLoaded = false;
     NSString *title = initSongDict[@"title"];
     NSString *album = initSongDict[@"album"];
     NSString *cover = initSongDict[@"cover"];
+    NSString *isLoop = initSongDict[@"loop"];
 
     NSURL *soundUrl = [[NSURL alloc] initWithString:url];
     AVURLAsset* audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:nil];
-    NSLog(@"initSong, %@", soundUrl);
     NSLog(@"Song title %@", title);
 
 
@@ -78,6 +79,7 @@ static bool songIsLoaded = false;
     _title = title;
     _album = album;
     _cover = cover;
+    _isLoop = [NSNumber numberWithBool:isLoop];
 
     songIsLoaded = false;
 
@@ -97,6 +99,18 @@ static bool songIsLoaded = false;
 
 
     [self registerAudioListeners];
+}
+
+- (void) setCurrentTimeFromJS: (CDVInvokedUrlCommand*) command {
+    NSNumber *value = [command.arguments objectAtIndex:0];
+    NSLog(@"setCurrentTimeFromJS, %@", value);
+    [self setCurrentTime:[value floatValue]];
+}
+
+- (void) setCurrentTime: (float) seconds {
+    // seek time in player
+    CMTime seekTime = CMTimeMakeWithSeconds(seconds, 100000);
+    [self.audioPlayer seekToTime:seekTime];
 }
 
 // Get id for JS callback
@@ -206,7 +220,7 @@ static bool songIsLoaded = false;
     NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
 
     // seek to in player
-    [self.audioPlayer seekToTime:seekTime];
+    [self setCurrentTime:audioCurrentTimeSeconds];
 
     // update playnow widget
     NSMutableDictionary *playInfo = [NSMutableDictionary dictionaryWithDictionary:[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo];
@@ -281,8 +295,14 @@ static bool songIsLoaded = false;
 }
 
 -(void)itemDidFinishPlaying:(NSNotification *) notification {
-    NSLog(@"Song stopped");
-    [self sendEvent:@"nextTrack"];
+    NSLog(@"Song stopped, %@", _isLoop);
+    if ([_isLoop isEqualToNumber:[NSNumber numberWithInt:1]]) {
+        // Loop for current audio
+        [self setCurrentTime:0.0];
+        [self play:nil];
+    } else {
+        [self sendEvent:@"nextTrack"];
+    }
 }
 
 -(void)itemDidFinishPlaying1:(NSNotification *) notification {

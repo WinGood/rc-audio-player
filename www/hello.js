@@ -4,6 +4,12 @@ module.exports = {
   initSong: function(params, successCallback, errorCallback) {
     cordova.exec(successCallback, errorCallback, 'Hello', 'initSong', [params]);
   },
+  setLoop: function(flag) {
+    cordova.exec(function() {}, function() {}, 'Hello', 'setLoopFromJS', [flag]);
+  },
+  setCurrentTime: function(seconds) {
+    cordova.exec(function() {}, function() {}, 'Hello', 'setCurrentTimeFromJS', [seconds]);
+  },
   play: function(successCallback, errorCallback) {
     cordova.exec(successCallback, errorCallback, 'Hello', 'play');
   },
