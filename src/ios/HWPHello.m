@@ -7,6 +7,8 @@ static NSString *_title;
 static NSString *_album;
 static NSString *_cover;
 static bool isPlaying = false;
+static bool audioListenersApplied = false;
+static bool songIsLoaded = false;
 
 - (void)pluginInitialize
 {
@@ -32,14 +34,10 @@ static bool isPlaying = false;
     [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
     [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
 
+    self.audioPlayer = [[AVPlayer alloc] init];
+
     // Listener for event that fired when song has stopped playing
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.audioItem];
-
-    // Listener for updating current time in JS env
-    CMTime interval = CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC);
-    [self.audioPlayer addPeriodicTimeObserverForInterval:interval queue:NULL usingBlock:^(CMTime time) {
-        NSLog(@"update time");
-    }];
 }
 
 - (void)initSong:(CDVInvokedUrlCommand*)command
@@ -81,24 +79,86 @@ static bool isPlaying = false;
     _album = album;
     _cover = cover;
 
+    songIsLoaded = false;
+
 //    [songInfo setObject:soundUrl forKey:@"url"];
 //    [songInfo setObject:artist forKey:@"artist"];
 //    [songInfo setObject:title forKey:@"title"];
 //    [songInfo setObject:album forKey:@"album"];
 //    [songInfo setObject:cover forKey:@"cover"];
 
+    [self unregisterAudioListeners];
+
     self.audioItem = [AVPlayerItem playerItemWithAsset:audioAsset];
     self.audioPlayer = [[AVPlayer alloc] initWithPlayerItem:self.audioItem];
     self.audioPlayer.automaticallyWaitsToMinimizeStalling = false;
     self.audioPlayer.allowsExternalPlayback = false;
+    [self sendDuration];
 
-//    @try {
-//        // Listener for buffering progress
-//        [self.audioItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionNew context:nil];
-//    }
-//    @catch (NSException *exception) {
-//        NSLog(@"%@", exception.reason);
-//    }
+
+    [self registerAudioListeners];
+}
+
+// Get id for JS callback
+- (void) watch: (CDVInvokedUrlCommand*) command {
+    watchCallbackID = command.callbackId;
+}
+
+// Send any data back to JS env
+- (void) sendDataToJS: (NSDictionary*) dict {
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options: 0 error: nil];
+    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+
+    plresult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:jsonString];
+    [plresult setKeepCallbackAsBool:YES];
+    [self.commandDelegate sendPluginResult:plresult callbackId:watchCallbackID];
+}
+
+- (void)sendDuration
+{
+    CMTime audioDuration = self.audioPlayer.currentItem.asset.duration;
+    float audioDurationSeconds = CMTimeGetSeconds(audioDuration);
+    NSString *duration = [[NSNumber numberWithFloat:audioDurationSeconds] stringValue];
+//
+//    NSMutableDictionary *data = [NSMutableDictionary dictionary];
+//    [data setObject:[NSMutableDictionary dictionaryWithDictionary:@{@"duration" : duration}]
+//             forKey:@"data"];
+
+    [self sendDataToJS:@{@"duration": duration}];
+
+    NSLog(@"duration, %@", duration);
+}
+
+- (void)unregisterAudioListeners
+{
+    if (audioListenersApplied == true) {
+        [self.audioItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
+        [self.audioPlayer removeTimeObserver:self.timeObserver];
+        audioListenersApplied = false;
+    }
+}
+
+- (void)registerAudioListeners
+{
+    if (audioListenersApplied == false) {
+        // Listener for updating current time in JS env
+        __block HWPHello *that = self;
+        CMTime interval = CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC);
+
+        self.timeObserver = [self.audioPlayer addPeriodicTimeObserverForInterval:interval queue:NULL usingBlock:^(CMTime time) {
+            CMTime audioCurrentTime = that.audioPlayer.currentTime;
+            float audioCurrentTimeSeconds = CMTimeGetSeconds(audioCurrentTime);
+            NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
+
+            [that sendDataToJS:@{@"elapsed": elapsed}];
+            NSLog(@"update time - %@", elapsed);
+        }];
+
+        // Listener for buffering progress
+        [self.audioItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionNew context:nil];
+
+        audioListenersApplied = true;
+    }
 }
 
 - (void)play:(CDVInvokedUrlCommand*)command
@@ -232,14 +292,24 @@ static bool isPlaying = false;
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
                         change:(NSDictionary *)change context:(void *)context {
-    if(object == self.audioPlayer.currentItem && [keyPath isEqualToString:@"loadedTimeRanges"]) {
-        NSArray *timeRanges = (NSArray*)[change objectForKey:NSKeyValueChangeNewKey];
-        if (timeRanges && [timeRanges count]) {
-            CMTimeRange timeRange = [[timeRanges objectAtIndex:0] CMTimeRangeValue];
+    if (songIsLoaded == false) {
+        if(object == self.audioPlayer.currentItem && [keyPath isEqualToString:@"loadedTimeRanges"]) {
+            NSArray *timeRanges = (NSArray*)[change objectForKey:NSKeyValueChangeNewKey];
+            if (timeRanges && [timeRanges count]) {
+                CMTimeRange timeRange = [[timeRanges objectAtIndex:0] CMTimeRangeValue];
 
-            float percent = (CMTimeGetSeconds(timeRange.duration) / CMTimeGetSeconds(self.audioPlayer.currentItem.duration)) * 100;
+                float percent = (CMTimeGetSeconds(timeRange.duration) / CMTimeGetSeconds(self.audioPlayer.currentItem.duration)) * 100;
 
-            NSLog(@"Buffering %f", percent);
+                NSString *percentString = [[NSNumber numberWithFloat:percent] stringValue];
+
+                NSLog(@"Buffering %@", percentString);
+
+                [self sendDataToJS:@{@"bufferProgress": percentString}];
+
+                if (percent >= 100) {
+                    songIsLoaded = true;
+                }
+            }
         }
     }
 }

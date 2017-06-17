@@ -6,6 +6,7 @@
 
 @interface HWPHello : CDVPlugin {
     NSString *callbackID;
+    NSString *watchCallbackID;
     CDVPluginResult *plresult;
     NSMutableDictionary *songInfo;
     MPNowPlayingInfoCenter *center;
@@ -17,5 +18,6 @@
 
 @property (strong, nonatomic) AVPlayerItem *audioItem;
 @property (strong, nonatomic) AVPlayer *audioPlayer;
+@property (strong, nonatomic) AVPlayer *timeObserver;
 
 @end
