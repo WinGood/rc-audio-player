@@ -1,4 +1,5 @@
 #import "HWPHello.h"
+#define SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(v)  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedAscending)
 
 @implementation HWPHello
 
@@ -7,7 +8,6 @@ static NSString *_title;
 static NSString *_album;
 static NSString *_cover;
 static NSNumber *_isLoop;
-static bool isPlaying = false;
 static bool audioListenersApplied = false;
 static bool songIsLoaded = false;
 
@@ -34,8 +34,6 @@ static bool songIsLoaded = false;
     [commandCenter.pauseCommand addTarget:self action:@selector(onPause:)];
     [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
     [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
-
-//    self.audioPlayer = [[AVPlayer alloc] init];
 
     // Listener for event that fired when song has stopped playing
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.audioItem];
@@ -71,8 +69,6 @@ static bool songIsLoaded = false;
 
     NSURL *soundUrl = [[NSURL alloc] initWithString:url];
     AVURLAsset* audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:nil];
-    NSLog(@"Song title %@", title);
-
 
     _artist = artist;
     _title = title;
@@ -82,24 +78,23 @@ static bool songIsLoaded = false;
 
     songIsLoaded = false;
 
-//    [songInfo setObject:soundUrl forKey:@"url"];
-//    [songInfo setObject:artist forKey:@"artist"];
-//    [songInfo setObject:title forKey:@"title"];
-//    [songInfo setObject:album forKey:@"album"];
-//    [songInfo setObject:cover forKey:@"cover"];
-
     [self unregisterAudioListeners];
 
     self.audioItem = [AVPlayerItem playerItemWithAsset:audioAsset];
     self.audioPlayer = [[AVPlayer alloc] initWithPlayerItem:self.audioItem];
-    self.audioPlayer.automaticallyWaitsToMinimizeStalling = false;
     self.audioPlayer.allowsExternalPlayback = false;
+
+    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"10.0")) {
+        self.audioPlayer.automaticallyWaitsToMinimizeStalling = false;
+    }
 
     [self sendDuration];
     [self sendDataToJS:@{@"loop": _isLoop}];
 
 
     [self registerAudioListeners];
+
+    NSLog(@"Song title %@", title);
 }
 
 - (void) setCurrentTimeFromJS: (CDVInvokedUrlCommand*) command {
@@ -196,7 +191,6 @@ static bool songIsLoaded = false;
 - (void)pause:(CDVInvokedUrlCommand*)command
 {
     NSLog(@"pause");
-    isPlaying = false;
     [self.audioPlayer pause];
     [self updateMusicControls:true];
 }

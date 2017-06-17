@@ -8,7 +8,6 @@
     NSString *initCallbackID;
     NSString *subscribeCallbackID;
     CDVPluginResult *plresult;
-    NSMutableDictionary *songInfo;
     MPNowPlayingInfoCenter *center;
 }
 
