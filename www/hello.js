@@ -21,11 +21,11 @@ module.exports = {
   },
   listen: function () {
     cordova.exec(module.exports.receiveCallbackFromNative, function (res) {
-    }, 'Hello', 'watch', []);
+    }, 'Hello', 'setWatcherFromJS', []);
   },
   receiveCallbackFromNative: function (messageFromNative) {
     module.exports.updateCallback(messageFromNative);
     cordova.exec(module.exports.receiveCallbackFromNative, function (res) {
-    }, 'Hello', 'watch', []);
+    }, 'Hello', 'setWatcherFromJS', []);
   }
 };

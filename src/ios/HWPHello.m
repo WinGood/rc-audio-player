@@ -35,7 +35,7 @@ static bool songIsLoaded = false;
     [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
     [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
 
-    self.audioPlayer = [[AVPlayer alloc] init];
+//    self.audioPlayer = [[AVPlayer alloc] init];
 
     // Listener for event that fired when song has stopped playing
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.audioItem];
@@ -43,7 +43,7 @@ static bool songIsLoaded = false;
 
 - (void)initSong:(CDVInvokedUrlCommand*)command
 {
-    callbackID = command.callbackId;
+    initCallbackID = command.callbackId;
     center = [MPNowPlayingInfoCenter defaultCenter];
     NSDictionary *initSongDict = [command.arguments objectAtIndex:0];
 
@@ -68,7 +68,6 @@ static bool songIsLoaded = false;
     NSString *title = initSongDict[@"title"];
     NSString *album = initSongDict[@"album"];
     NSString *cover = initSongDict[@"cover"];
-    NSString *isLoop = initSongDict[@"loop"];
 
     NSURL *soundUrl = [[NSURL alloc] initWithString:url];
     AVURLAsset* audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:nil];
@@ -79,7 +78,7 @@ static bool songIsLoaded = false;
     _title = title;
     _album = album;
     _cover = cover;
-    _isLoop = [NSNumber numberWithBool:isLoop];
+    _isLoop = [NSNumber numberWithInteger:0];
 
     songIsLoaded = false;
 
@@ -95,7 +94,9 @@ static bool songIsLoaded = false;
     self.audioPlayer = [[AVPlayer alloc] initWithPlayerItem:self.audioItem];
     self.audioPlayer.automaticallyWaitsToMinimizeStalling = false;
     self.audioPlayer.allowsExternalPlayback = false;
+
     [self sendDuration];
+    [self sendDataToJS:@{@"loop": _isLoop}];
 
 
     [self registerAudioListeners];
@@ -107,6 +108,11 @@ static bool songIsLoaded = false;
     [self setCurrentTime:[value floatValue]];
 }
 
+- (void) setLoopFromJS: (CDVInvokedUrlCommand*) command {
+    _isLoop = [command.arguments objectAtIndex:0];
+    [self sendDataToJS:@{@"loop": _isLoop}];
+}
+
 - (void) setCurrentTime: (float) seconds {
     // seek time in player
     CMTime seekTime = CMTimeMakeWithSeconds(seconds, 100000);
@@ -114,20 +120,21 @@ static bool songIsLoaded = false;
 }
 
 // Get id for JS callback
-- (void) watch: (CDVInvokedUrlCommand*) command {
-    watchCallbackID = command.callbackId;
+- (void) setWatcherFromJS: (CDVInvokedUrlCommand*) command {
+    subscribeCallbackID = command.callbackId;
 }
 
-// Send any data back to JS env
+// Send any data back to JS env through subscribe callback
 - (void) sendDataToJS: (NSDictionary*) dict {
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options: 0 error: nil];
     NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
 
     plresult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:jsonString];
     [plresult setKeepCallbackAsBool:YES];
-    [self.commandDelegate sendPluginResult:plresult callbackId:watchCallbackID];
+    [self.commandDelegate sendPluginResult:plresult callbackId:subscribeCallbackID];
 }
 
+// Send duration to JS as soon as possible
 - (void)sendDuration
 {
     CMTime audioDuration = self.audioPlayer.currentItem.asset.duration;
@@ -148,6 +155,7 @@ static bool songIsLoaded = false;
     if (audioListenersApplied == true) {
         [self.audioItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
         [self.audioPlayer removeTimeObserver:self.timeObserver];
+        [self.audioPlayer removeObserver:self forKeyPath:@"status"];
         audioListenersApplied = false;
     }
 }
@@ -155,7 +163,7 @@ static bool songIsLoaded = false;
 - (void)registerAudioListeners
 {
     if (audioListenersApplied == false) {
-        // Listener for updating current time in JS env
+        // Listener for updating elapsed time
         __block HWPHello *that = self;
         CMTime interval = CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC);
 
@@ -164,12 +172,15 @@ static bool songIsLoaded = false;
             float audioCurrentTimeSeconds = CMTimeGetSeconds(audioCurrentTime);
             NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
 
-            [that sendDataToJS:@{@"elapsed": elapsed}];
+            [that sendDataToJS:@{@"currentTime": elapsed}];
             NSLog(@"update time - %@", elapsed);
         }];
 
         // Listener for buffering progress
         [self.audioItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionNew context:nil];
+
+        // Ready to play
+        [self.audioPlayer addObserver:self forKeyPath:@"status" options:0 context:nil];
 
         audioListenersApplied = true;
     }
@@ -190,25 +201,19 @@ static bool songIsLoaded = false;
     [self updateMusicControls:true];
 }
 
-- (void)sendEvent:(NSString*)event
+- (void)sendRemoteControlEvent:(NSString*)event
 {
     NSLog(@"Event, %@", event);
-
-    // Send data back in JS env
-    NSDictionary *dict = @{@"type": event};
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options: 0 error: nil];
-    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-
-    plresult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:jsonString];
-    [plresult setKeepCallbackAsBool:YES];
-    [self.commandDelegate sendPluginResult:plresult callbackId:callbackID];
+    // Send event in JS env
+    [self sendDataToJS:@{@"event": event}];
 }
 
-- (void)onPlay:(MPRemoteCommandHandlerStatus*)event { [self sendEvent:@"play"]; }
-- (void)onPause:(MPRemoteCommandHandlerStatus*)event { [self sendEvent:@"pause"]; }
-- (void)onNextTrack:(MPRemoteCommandHandlerStatus*)event { [self sendEvent:@"nextTrack"]; }
-- (void)onPreviousTrack:(MPRemoteCommandHandlerStatus*)event { [self sendEvent:@"previousTrack"]; }
+- (void)onPlay:(MPRemoteCommandHandlerStatus*)event { [self sendRemoteControlEvent:@"play"]; }
+- (void)onPause:(MPRemoteCommandHandlerStatus*)event { [self sendRemoteControlEvent:@"pause"]; }
+- (void)onNextTrack:(MPRemoteCommandHandlerStatus*)event { [self sendRemoteControlEvent:@"nextTrack"]; }
+- (void)onPreviousTrack:(MPRemoteCommandHandlerStatus*)event { [self sendRemoteControlEvent:@"previousTrack"]; }
 
+// TODO read something about it
 - (MPRemoteCommandHandlerStatus)setCanBeControlledByScrubbing:(MPChangePlaybackPositionCommandEvent*)event {
     return MPRemoteCommandHandlerStatusSuccess;
 }
@@ -296,39 +301,48 @@ static bool songIsLoaded = false;
 
 -(void)itemDidFinishPlaying:(NSNotification *) notification {
     NSLog(@"Song stopped, %@", _isLoop);
+    // If need loop current song
     if ([_isLoop isEqualToNumber:[NSNumber numberWithInt:1]]) {
-        // Loop for current audio
         [self setCurrentTime:0.0];
         [self play:nil];
     } else {
-        [self sendEvent:@"nextTrack"];
+        [self sendRemoteControlEvent:@"nextTrack"];
     }
-}
-
--(void)itemDidFinishPlaying1:(NSNotification *) notification {
-    NSLog(@"Song jumped %@", notification);
-//    [self sendEvent:@"nextTrack"];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
                         change:(NSDictionary *)change context:(void *)context {
+    // check status initializing of song
+    if (object == self.audioPlayer && [keyPath isEqualToString:@"status"]) {
+        if (self.audioPlayer.status == AVPlayerStatusReadyToPlay) {
+            NSLog(@"Ready to play");
+            plresult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:nil];
+            [self.commandDelegate sendPluginResult:plresult callbackId:initCallbackID];
+        } else if (self.audioPlayer.status == AVPlayerStatusFailed) {
+            NSLog(@"Not ready to play");
+            plresult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:self.audioPlayer.currentItem.error.localizedDescription];
+            [self.commandDelegate sendPluginResult:plresult callbackId:initCallbackID];
+        }
+    }
+
+    // Progress of buffering audio
     if (songIsLoaded == false) {
         if(object == self.audioPlayer.currentItem && [keyPath isEqualToString:@"loadedTimeRanges"]) {
-            NSArray *timeRanges = (NSArray*)[change objectForKey:NSKeyValueChangeNewKey];
-            if (timeRanges && [timeRanges count]) {
-                CMTimeRange timeRange = [[timeRanges objectAtIndex:0] CMTimeRangeValue];
+            NSArray *loadedTimeRanges = [[self.audioPlayer currentItem] loadedTimeRanges];
+            CMTimeRange timeRange = [[loadedTimeRanges objectAtIndex:0] CMTimeRangeValue];
+            Float64 startSeconds = CMTimeGetSeconds(timeRange.start);
+            Float64 durationSeconds = CMTimeGetSeconds(timeRange.duration);
 
-                float percent = (CMTimeGetSeconds(timeRange.duration) / CMTimeGetSeconds(self.audioPlayer.currentItem.duration)) * 100;
+            float percent = (startSeconds + durationSeconds) * 100 / CMTimeGetSeconds(self.audioPlayer.currentItem.duration);
 
-                NSString *percentString = [[NSNumber numberWithFloat:percent] stringValue];
+            NSString *percentString = [[NSNumber numberWithFloat:percent] stringValue];
 
-                NSLog(@"Buffering %@", percentString);
+            [self sendDataToJS:@{@"bufferProgress": percentString}];
 
-                [self sendDataToJS:@{@"bufferProgress": percentString}];
+            NSLog(@"Buffering %@", percentString);
 
-                if (percent >= 100) {
-                    songIsLoaded = true;
-                }
+            if (percent >= 100) {
+                songIsLoaded = true;
             }
         }
     }
@@ -337,6 +351,7 @@ static bool songIsLoaded = false;
 -(void)dealloc {
     [[UIApplication sharedApplication] endReceivingRemoteControlEvents];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"receivedEvent" object:nil];
+    [self unregisterAudioListeners];
 }
 
 @end

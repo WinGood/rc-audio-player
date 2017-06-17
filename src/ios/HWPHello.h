@@ -5,14 +5,16 @@
 #import <MediaPlayer/MPMediaItem.h>
 
 @interface HWPHello : CDVPlugin {
-    NSString *callbackID;
-    NSString *watchCallbackID;
+    NSString *initCallbackID;
+    NSString *subscribeCallbackID;
     CDVPluginResult *plresult;
     NSMutableDictionary *songInfo;
     MPNowPlayingInfoCenter *center;
 }
 
 - (void) initSong:(CDVInvokedUrlCommand*)command;
+- (void) setLoopFromJS:(CDVInvokedUrlCommand*)command;
+- (void) setCurrentTimeFromJS:(CDVInvokedUrlCommand*)command;
 - (void) play:(CDVInvokedUrlCommand*)command;
 - (void) pause:(CDVInvokedUrlCommand*)command;
 
