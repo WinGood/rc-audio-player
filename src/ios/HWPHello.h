@@ -8,6 +8,7 @@
     NSString *callbackID;
     CDVPluginResult *plresult;
     NSMutableDictionary *songInfo;
+    MPNowPlayingInfoCenter *center;
 }
 
 - (void) initSong:(CDVInvokedUrlCommand*)command;
