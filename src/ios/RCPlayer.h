@@ -4,7 +4,7 @@
 #import <MediaPlayer/MPNowPlayingInfoCenter.h>
 #import <MediaPlayer/MPMediaItem.h>
 
-@interface HWPHello : CDVPlugin {
+@interface RCPlayer : CDVPlugin {
     NSString *initCallbackID;
     NSString *subscribeCallbackID;
     CDVPluginResult *plresult;

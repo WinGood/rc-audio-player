@@ -1,7 +1,7 @@
-#import "HWPHello.h"
+#import "RCPlayer.h"
 #define SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(v)  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedAscending)
 
-@implementation HWPHello
+@implementation RCPlayer
 
 static NSString *_artist;
 static NSString *_title;
@@ -159,7 +159,7 @@ static bool songIsLoaded = false;
 {
     if (audioListenersApplied == false) {
         // Listener for updating elapsed time
-        __block HWPHello *that = self;
+        __block RCPlayer *that = self;
         CMTime interval = CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC);
 
         self.timeObserver = [self.audioPlayer addPeriodicTimeObserverForInterval:interval queue:NULL usingBlock:^(CMTime time) {
