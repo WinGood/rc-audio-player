@@ -24,41 +24,63 @@ static bool isPlaying = false;
     NSNumber *shouldScrub = [NSNumber numberWithBool:YES];
     [[[MPRemoteCommandCenter sharedCommandCenter] changePlaybackPositionCommand]
      performSelector:@selector(setCanBeControlledByScrubbing:) withObject:shouldScrub];
-    
+
     // Listeners for events from NowPlaying widget
     [commandCenter.changePlaybackPositionCommand addTarget:self action:@selector(onChangePlayback:)];
     [commandCenter.playCommand addTarget:self action:@selector(onPlay:)];
     [commandCenter.pauseCommand addTarget:self action:@selector(onPause:)];
     [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
     [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
-    
+
     // Listener for event that fired when song has stopped playing
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.audioItem];
+
+    // Listener for updating current time in JS env
+    CMTime interval = CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC);
+    [self.audioPlayer addPeriodicTimeObserverForInterval:interval queue:NULL usingBlock:^(CMTime time) {
+        NSLog(@"update time");
+    }];
 }
 
 - (void)initSong:(CDVInvokedUrlCommand*)command
 {
     callbackID = command.callbackId;
     center = [MPNowPlayingInfoCenter defaultCenter];
+    NSDictionary *initSongDict = [command.arguments objectAtIndex:0];
+
+    // Queue
+//    NSArray *initQueue = [initSongDict valueForKeyPath:@"queue"];
+//
+//    NSLog(@"Test %@", initQueue);
+//
+//    NSMutableArray *queue = [[NSMutableArray alloc] init];
+//    for (int i = 0; i < [initQueue count]; i++) {
+//        NSLog(@"Dict [%d]:%@", i, initQueue[i]);
+//        [queue addObject:initQueue[i]];
+//    }
+//
+//    AVQueuePlayer *player = [[AVQueuePlayer alloc] initWithItems:queue];
+//
+//    return;
 
     // Data from JS env
-    NSString *url = [command.arguments objectAtIndex:0];
-    NSString *artist = [command.arguments objectAtIndex:1];
-    NSString *title = [command.arguments objectAtIndex:2];
-    NSString *album = [command.arguments objectAtIndex:3];
-    NSString *cover = [command.arguments objectAtIndex:4];
+    NSString *url = initSongDict[@"url"];
+    NSString *artist = initSongDict[@"artist"];
+    NSString *title = initSongDict[@"title"];
+    NSString *album = initSongDict[@"album"];
+    NSString *cover = initSongDict[@"cover"];
 
     NSURL *soundUrl = [[NSURL alloc] initWithString:url];
     AVURLAsset* audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:nil];
     NSLog(@"initSong, %@", soundUrl);
     NSLog(@"Song title %@", title);
-    
+
 
     _artist = artist;
     _title = title;
     _album = album;
     _cover = cover;
-    
+
 //    [songInfo setObject:soundUrl forKey:@"url"];
 //    [songInfo setObject:artist forKey:@"artist"];
 //    [songInfo setObject:title forKey:@"title"];
@@ -69,6 +91,14 @@ static bool isPlaying = false;
     self.audioPlayer = [[AVPlayer alloc] initWithPlayerItem:self.audioItem];
     self.audioPlayer.automaticallyWaitsToMinimizeStalling = false;
     self.audioPlayer.allowsExternalPlayback = false;
+
+//    @try {
+//        // Listener for buffering progress
+//        [self.audioItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionNew context:nil];
+//    }
+//    @catch (NSException *exception) {
+//        NSLog(@"%@", exception.reason);
+//    }
 }
 
 - (void)play:(CDVInvokedUrlCommand*)command
@@ -114,28 +144,28 @@ static bool isPlaying = false;
     CMTime seekTime = CMTimeMakeWithSeconds(event.positionTime, 100000);
     float audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
     NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
-    
+
     // seek to in player
     [self.audioPlayer seekToTime:seekTime];
-    
+
     // update playnow widget
     NSMutableDictionary *playInfo = [NSMutableDictionary dictionaryWithDictionary:[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo];
     [playInfo setObject:elapsed forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
     center.nowPlayingInfo = playInfo;
-    
+
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (void)updateMusicControls:(BOOL)isPause {
     CMTime audioDuration = self.audioPlayer.currentItem.asset.duration;
     CMTime audioCurrentTime = self.audioPlayer.currentTime;
-    
+
     float audioDurationSeconds = CMTimeGetSeconds(audioDuration);
     float audioCurrentTimeSeconds = CMTimeGetSeconds(audioCurrentTime);
-    
+
     NSString *duration = [[NSNumber numberWithFloat:audioDurationSeconds] stringValue];
     NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
-    
+
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         UIImage *image = nil;
         // check whether cover path is present
@@ -168,7 +198,7 @@ static bool isPlaying = false;
             // default named "no-image"
             image = [UIImage imageNamed:@"no-image"];
         }
-        
+
         // check whether image is loaded
         CGImageRef cgref = [image CGImage];
         CIImage *cim = [image CIImage];
@@ -193,6 +223,25 @@ static bool isPlaying = false;
 -(void)itemDidFinishPlaying:(NSNotification *) notification {
     NSLog(@"Song stopped");
     [self sendEvent:@"nextTrack"];
+}
+
+-(void)itemDidFinishPlaying1:(NSNotification *) notification {
+    NSLog(@"Song jumped %@", notification);
+//    [self sendEvent:@"nextTrack"];
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
+                        change:(NSDictionary *)change context:(void *)context {
+    if(object == self.audioPlayer.currentItem && [keyPath isEqualToString:@"loadedTimeRanges"]) {
+        NSArray *timeRanges = (NSArray*)[change objectForKey:NSKeyValueChangeNewKey];
+        if (timeRanges && [timeRanges count]) {
+            CMTimeRange timeRange = [[timeRanges objectAtIndex:0] CMTimeRangeValue];
+
+            float percent = (CMTimeGetSeconds(timeRange.duration) / CMTimeGetSeconds(self.audioPlayer.currentItem.duration)) * 100;
+
+            NSLog(@"Buffering %f", percent);
+        }
+    }
 }
 
 -(void)dealloc {
