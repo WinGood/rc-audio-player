@@ -11,6 +11,10 @@ static NSNumber *_isLoop;
 static bool audioListenersApplied = false;
 static bool songIsLoaded = false;
 
+static bool readyToPlay = false;
+static AVURLAsset *readyToPlayAsset;
+static bool needPlaySong = false;
+
 - (void)pluginInitialize
 {
     // Playback audio in background mode
@@ -77,24 +81,34 @@ static bool songIsLoaded = false;
     _isLoop = [NSNumber numberWithInteger:0];
 
     songIsLoaded = false;
-
-    [self unregisterAudioListeners];
-
-    self.audioItem = [AVPlayerItem playerItemWithAsset:audioAsset];
-    self.audioPlayer = [[AVPlayer alloc] initWithPlayerItem:self.audioItem];
-    self.audioPlayer.allowsExternalPlayback = false;
-
-    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"10.0")) {
-        self.audioPlayer.automaticallyWaitsToMinimizeStalling = false;
+    readyToPlay = false;
+    needPlaySong = false;
+    
+    if (self.audioPlayer.currentItem) {
+        NSLog(@"stop loading");
+        [self.audioPlayer.currentItem cancelPendingSeeks];
+        [self.audioPlayer.currentItem.asset cancelLoading];
     }
-
-    [self sendDuration];
-    [self sendDataToJS:@{@"loop": _isLoop}];
-
-
-    [self registerAudioListeners];
-
-    NSLog(@"Song title %@", title);
+    
+    
+    [audioAsset loadValuesAsynchronouslyForKeys:@[@"duration"] completionHandler:^{
+        [self unregisterAudioListeners];
+        
+        self.audioItem = [AVPlayerItem playerItemWithAsset:audioAsset];
+        self.audioPlayer = [[AVPlayer alloc] initWithPlayerItem:self.audioItem];
+        self.audioPlayer.allowsExternalPlayback = false;
+        
+        if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"10.0")) {
+            self.audioPlayer.automaticallyWaitsToMinimizeStalling = false;
+        }
+        
+        [self sendDuration];
+        [self sendDataToJS:@{@"loop": _isLoop}];
+        
+        [self registerAudioListeners];
+        
+        NSLog(@"Song title %@", title);
+    }];
 }
 
 - (void) setCurrentTimeFromJS: (CDVInvokedUrlCommand*) command {
@@ -135,10 +149,6 @@ static bool songIsLoaded = false;
     CMTime audioDuration = self.audioPlayer.currentItem.asset.duration;
     float audioDurationSeconds = CMTimeGetSeconds(audioDuration);
     NSString *duration = [[NSNumber numberWithFloat:audioDurationSeconds] stringValue];
-//
-//    NSMutableDictionary *data = [NSMutableDictionary dictionary];
-//    [data setObject:[NSMutableDictionary dictionaryWithDictionary:@{@"duration" : duration}]
-//             forKey:@"data"];
 
     [self sendDataToJS:@{@"duration": duration}];
 
@@ -149,8 +159,8 @@ static bool songIsLoaded = false;
 {
     if (audioListenersApplied == true) {
         [self.audioItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
+        [self.audioItem removeObserver:self forKeyPath:@"status"];
         [self.audioPlayer removeTimeObserver:self.timeObserver];
-        [self.audioPlayer removeObserver:self forKeyPath:@"status"];
         audioListenersApplied = false;
     }
 }
@@ -175,7 +185,7 @@ static bool songIsLoaded = false;
         [self.audioItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionNew context:nil];
 
         // Ready to play
-        [self.audioPlayer addObserver:self forKeyPath:@"status" options:0 context:nil];
+        [self.audioItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:nil];
 
         audioListenersApplied = true;
     }
@@ -183,9 +193,15 @@ static bool songIsLoaded = false;
 
 - (void)play:(CDVInvokedUrlCommand*)command
 {
-    NSLog(@"play, %@", _title);
-    [self.audioPlayer play];
-    [self updateMusicControls:false];
+    AVURLAsset *currentSong = (AVURLAsset *)[self.audioPlayer.currentItem asset];
+    
+    if ((readyToPlay == true) && ([currentSong.URL isEqual: readyToPlayAsset.URL])) {
+        NSLog(@"play, %@", _title);
+        [self.audioPlayer play];
+        [self updateMusicControls:false];
+    } else {
+        needPlaySong = true;
+    }
 }
 
 - (void)pause:(CDVInvokedUrlCommand*)command
@@ -214,17 +230,21 @@ static bool songIsLoaded = false;
 
 - (MPRemoteCommandHandlerStatus)onChangePlayback:(MPChangePlaybackPositionCommandEvent*)event {
     NSLog(@"changePlaybackPosition to %f", event.positionTime);
-    CMTime seekTime = CMTimeMakeWithSeconds(event.positionTime, 100000);
-    float audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
-    NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
-
-    // seek to in player
-    [self setCurrentTime:audioCurrentTimeSeconds];
-
-    // update playnow widget
-    NSMutableDictionary *playInfo = [NSMutableDictionary dictionaryWithDictionary:[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo];
-    [playInfo setObject:elapsed forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
-    center.nowPlayingInfo = playInfo;
+    AVURLAsset *currentSong = (AVURLAsset *)[self.audioPlayer.currentItem asset];
+    
+    if ((readyToPlay == true) && ([currentSong.URL isEqual: readyToPlayAsset.URL])) {
+        CMTime seekTime = CMTimeMakeWithSeconds(event.positionTime, 100000);
+        float audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
+        NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
+        
+        // seek to in player
+        [self setCurrentTime:audioCurrentTimeSeconds];
+        
+        // update playnow widget
+        NSMutableDictionary *playInfo = [NSMutableDictionary dictionaryWithDictionary:[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo];
+        [playInfo setObject:elapsed forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
+        center.nowPlayingInfo = playInfo;
+    }
 
     return MPRemoteCommandHandlerStatusSuccess;
 }
@@ -307,9 +327,17 @@ static bool songIsLoaded = false;
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
                         change:(NSDictionary *)change context:(void *)context {
     // check status initializing of song
-    if (object == self.audioPlayer && [keyPath isEqualToString:@"status"]) {
-        if (self.audioPlayer.status == AVPlayerStatusReadyToPlay) {
+    if (object == self.audioItem && [keyPath isEqualToString:@"status"]) {
+        if (self.audioItem.status == AVPlayerStatusReadyToPlay) {
             NSLog(@"Ready to play");
+            
+            readyToPlay = true;
+            readyToPlayAsset = (AVURLAsset *)[self.audioPlayer.currentItem asset];
+            
+            if (needPlaySong) {
+                [self play:nil];
+            }
+            
             plresult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:nil];
             [self.commandDelegate sendPluginResult:plresult callbackId:initCallbackID];
         } else if (self.audioPlayer.status == AVPlayerStatusFailed) {
