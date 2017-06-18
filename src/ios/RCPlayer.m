@@ -65,30 +65,26 @@ static bool needPlaySong = false;
 //    return;
 
     // Data from JS env
-    NSString *url = initSongDict[@"url"];
-    NSString *artist = initSongDict[@"artist"];
-    NSString *title = initSongDict[@"title"];
-    NSString *album = initSongDict[@"album"];
-    NSString *cover = initSongDict[@"cover"];
+    _artist = initSongDict[@"artist"];
+    _title = initSongDict[@"title"];
+    _album = initSongDict[@"album"];
+    _cover = initSongDict[@"cover"];
 
-    NSURL *soundUrl = [[NSURL alloc] initWithString:url];
+    NSURL *soundUrl = [[NSURL alloc] initWithString:initSongDict[@"url"]];
     AVURLAsset* audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:nil];
-
-    _artist = artist;
-    _title = title;
-    _album = album;
-    _cover = cover;
+    
     _isLoop = [NSNumber numberWithInteger:0];
 
     songIsLoaded = false;
     readyToPlay = false;
     needPlaySong = false;
     
+    // Stop loading previous song if it exits
     if (self.audioPlayer.currentItem) {
         [self.audioPlayer.currentItem cancelPendingSeeks];
         [self.audioPlayer.currentItem.asset cancelLoading];
+        [self sendDataToJS:@{@"bufferProgress": @"0"}];
     }
-    
     
     [audioAsset loadValuesAsynchronouslyForKeys:@[@"duration"] completionHandler:^{
         [self unregisterAudioListeners];
@@ -106,7 +102,7 @@ static bool needPlaySong = false;
         
         [self registerAudioListeners];
         
-        NSLog(@"Song title %@", title);
+        NSLog(@"Song title %@", _title);
     }];
 }
 
@@ -194,7 +190,8 @@ static bool needPlaySong = false;
 - (void)play:(CDVInvokedUrlCommand*)command
 {
     AVURLAsset *currentSong = (AVURLAsset *)[self.audioPlayer.currentItem asset];
-    
+ 
+    // Songs are loading async, start playing only if song ready to play.
     if ((readyToPlay == true) && ([currentSong.URL isEqual: readyToPlayAsset.URL])) {
         NSLog(@"play, %@", _title);
         [self.audioPlayer play];
@@ -232,6 +229,7 @@ static bool needPlaySong = false;
     NSLog(@"changePlaybackPosition to %f", event.positionTime);
     AVURLAsset *currentSong = (AVURLAsset *)[self.audioPlayer.currentItem asset];
     
+    // Songs are loading async, rewind will work only for current song
     if ((readyToPlay == true) && ([currentSong.URL isEqual: readyToPlayAsset.URL])) {
         CMTime seekTime = CMTimeMakeWithSeconds(event.positionTime, 100000);
         int audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
