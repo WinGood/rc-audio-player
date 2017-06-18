@@ -85,7 +85,6 @@ static bool needPlaySong = false;
     needPlaySong = false;
     
     if (self.audioPlayer.currentItem) {
-        NSLog(@"stop loading");
         [self.audioPlayer.currentItem cancelPendingSeeks];
         [self.audioPlayer.currentItem.asset cancelLoading];
     }
@@ -114,7 +113,7 @@ static bool needPlaySong = false;
 - (void) setCurrentTimeFromJS: (CDVInvokedUrlCommand*) command {
     NSNumber *value = [command.arguments objectAtIndex:0];
     NSLog(@"setCurrentTimeFromJS, %@", value);
-    [self setCurrentTime:[value floatValue]];
+    [self setCurrentTime:[value intValue]];
 }
 
 - (void) setLoopFromJS: (CDVInvokedUrlCommand*) command {
@@ -122,8 +121,9 @@ static bool needPlaySong = false;
     [self sendDataToJS:@{@"loop": _isLoop}];
 }
 
-- (void) setCurrentTime: (float) seconds {
+- (void) setCurrentTime: (int) seconds {
     // seek time in player
+    NSLog(@"seek time %d", seconds);
     CMTime seekTime = CMTimeMakeWithSeconds(seconds, 100000);
     [self.audioPlayer seekToTime:seekTime];
 }
@@ -147,8 +147,8 @@ static bool needPlaySong = false;
 - (void)sendDuration
 {
     CMTime audioDuration = self.audioPlayer.currentItem.asset.duration;
-    float audioDurationSeconds = CMTimeGetSeconds(audioDuration);
-    NSString *duration = [[NSNumber numberWithFloat:audioDurationSeconds] stringValue];
+    int audioDurationSeconds = CMTimeGetSeconds(audioDuration);
+    NSString *duration = [[NSNumber numberWithInteger:audioDurationSeconds] stringValue];
 
     [self sendDataToJS:@{@"duration": duration}];
 
@@ -174,8 +174,8 @@ static bool needPlaySong = false;
 
         self.timeObserver = [self.audioPlayer addPeriodicTimeObserverForInterval:interval queue:NULL usingBlock:^(CMTime time) {
             CMTime audioCurrentTime = that.audioPlayer.currentTime;
-            float audioCurrentTimeSeconds = CMTimeGetSeconds(audioCurrentTime);
-            NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
+            int audioCurrentTimeSeconds = CMTimeGetSeconds(audioCurrentTime);
+            NSString *elapsed = [[NSNumber numberWithInteger:audioCurrentTimeSeconds] stringValue];
 
             [that sendDataToJS:@{@"currentTime": elapsed}];
             NSLog(@"update time - %@", elapsed);
@@ -234,8 +234,8 @@ static bool needPlaySong = false;
     
     if ((readyToPlay == true) && ([currentSong.URL isEqual: readyToPlayAsset.URL])) {
         CMTime seekTime = CMTimeMakeWithSeconds(event.positionTime, 100000);
-        float audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
-        NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
+        int audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
+        NSString *elapsed = [[NSNumber numberWithInteger:audioCurrentTimeSeconds] stringValue];
         
         // seek to in player
         [self setCurrentTime:audioCurrentTimeSeconds];
@@ -253,11 +253,11 @@ static bool needPlaySong = false;
     CMTime audioDuration = self.audioPlayer.currentItem.asset.duration;
     CMTime audioCurrentTime = self.audioPlayer.currentTime;
 
-    float audioDurationSeconds = CMTimeGetSeconds(audioDuration);
-    float audioCurrentTimeSeconds = CMTimeGetSeconds(audioCurrentTime);
+    int audioDurationSeconds = CMTimeGetSeconds(audioDuration);
+    int audioCurrentTimeSeconds = CMTimeGetSeconds(audioCurrentTime);
 
-    NSString *duration = [[NSNumber numberWithFloat:audioDurationSeconds] stringValue];
-    NSString *elapsed = [[NSNumber numberWithFloat:audioCurrentTimeSeconds] stringValue];
+    NSString *duration = [[NSNumber numberWithInteger:audioDurationSeconds] stringValue];
+    NSString *elapsed = [[NSNumber numberWithInteger:audioCurrentTimeSeconds] stringValue];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         UIImage *image = nil;
@@ -317,9 +317,10 @@ static bool needPlaySong = false;
     NSLog(@"Song stopped, %@", _isLoop);
     // If need loop current song
     if ([_isLoop isEqualToNumber:[NSNumber numberWithInt:1]]) {
-        [self setCurrentTime:0.0];
+        [self setCurrentTime:0];
         [self play:nil];
     } else {
+        [self sendDataToJS:@{@"currentTime": @"0"}];
         [self sendRemoteControlEvent:@"nextTrack"];
     }
 }
