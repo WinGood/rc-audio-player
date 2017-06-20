@@ -208,6 +208,21 @@ static bool needPlaySong = false;
     [self updateMusicControls:true];
 }
 
+- (void)stop:(CDVInvokedUrlCommand*)command
+{
+    NSLog(@"stop");
+    [self.audioPlayer pause];
+    
+    self.audioPlayer = nil;
+    self.audioItem = nil;
+    
+    center.nowPlayingInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+                             @"", MPMediaItemPropertyArtist,
+                             @"", MPMediaItemPropertyTitle,
+                             @"", MPMediaItemPropertyAlbumTitle,
+                             [NSNumber numberWithFloat:0.0f], MPNowPlayingInfoPropertyPlaybackRate, nil];
+}
+
 - (void)sendRemoteControlEvent:(NSString*)event
 {
     NSLog(@"Event, %@", event);
