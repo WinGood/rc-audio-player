@@ -16,6 +16,9 @@ module.exports = {
   pause: function(successCallback, errorCallback) {
     cordova.exec(successCallback, errorCallback, 'RCPlayer', 'pause');
   },
+  stop: function(successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'stop');
+  },
   subscribe: function (onUpdate) {
     module.exports.updateCallback = onUpdate;
   },
