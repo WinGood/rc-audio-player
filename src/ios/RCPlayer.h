@@ -16,6 +16,7 @@
 - (void) setCurrentTimeFromJS:(CDVInvokedUrlCommand*)command;
 - (void) play:(CDVInvokedUrlCommand*)command;
 - (void) pause:(CDVInvokedUrlCommand*)command;
+- (void) stop:(CDVInvokedUrlCommand*)command;
 
 @property (strong, nonatomic) AVPlayerItem *audioItem;
 @property (strong, nonatomic) AVPlayer *audioPlayer;
