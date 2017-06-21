@@ -353,6 +353,7 @@ static bool needPlaySong = false;
             
             if (readyToPlayFired == false) {
                 readyToPlay = true;
+                readyToPlayFired = true;
                 readyToPlayAsset = (AVURLAsset *)[self.audioPlayer.currentItem asset];
                 
                 if (needPlaySong) {
