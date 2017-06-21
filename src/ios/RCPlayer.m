@@ -13,6 +13,7 @@ static bool songIsLoaded = false;
 static bool songIsStopped = false;
 
 static bool readyToPlay = false;
+static bool readyToPlayFired = false;
 static AVURLAsset *readyToPlayAsset;
 static bool needPlaySong = false;
 
@@ -78,6 +79,7 @@ static bool needPlaySong = false;
 
     songIsLoaded = false;
     readyToPlay = false;
+    readyToPlayFired = false;
     needPlaySong = false;
     songIsStopped = false;
     
@@ -349,11 +351,13 @@ static bool needPlaySong = false;
         if (self.audioItem.status == AVPlayerStatusReadyToPlay) {
             NSLog(@"Ready to play");
             
-            readyToPlay = true;
-            readyToPlayAsset = (AVURLAsset *)[self.audioPlayer.currentItem asset];
-            
-            if (needPlaySong) {
-                [self play:nil];
+            if (readyToPlayFired == false) {
+                readyToPlay = true;
+                readyToPlayAsset = (AVURLAsset *)[self.audioPlayer.currentItem asset];
+                
+                if (needPlaySong) {
+                    [self play:nil];
+                }
             }
             
             plresult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:nil];
