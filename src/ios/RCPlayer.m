@@ -16,6 +16,7 @@ static bool readyToPlay = false;
 static bool readyToPlayFired = false;
 static AVURLAsset *readyToPlayAsset;
 static bool needPlaySong = false;
+static bool passOneUpdateTick = false;
 
 - (void)pluginInitialize
 {
@@ -82,6 +83,7 @@ static bool needPlaySong = false;
     readyToPlayFired = false;
     needPlaySong = false;
     songIsStopped = false;
+    passOneUpdateTick = false;
     
     // Stop loading previous song if it exits
     if (self.audioPlayer.currentItem) {
@@ -125,6 +127,11 @@ static bool needPlaySong = false;
     // seek time in player
     NSLog(@"seek time %d", seconds);
     CMTime seekTime = CMTimeMakeWithSeconds(seconds, 100000);
+    int audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
+    NSString *currentTime = [[NSNumber numberWithInteger:audioCurrentTimeSeconds] stringValue];
+    passOneUpdateTick = true;
+    
+    [self sendDataToJS:@{@"currentTime": currentTime}];
     [self.audioPlayer seekToTime:seekTime];
 }
 
@@ -173,12 +180,16 @@ static bool needPlaySong = false;
         CMTime interval = CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC);
 
         self.timeObserver = [self.audioPlayer addPeriodicTimeObserverForInterval:interval queue:NULL usingBlock:^(CMTime time) {
-            CMTime audioCurrentTime = that.audioPlayer.currentTime;
-            int audioCurrentTimeSeconds = CMTimeGetSeconds(audioCurrentTime);
-            NSString *elapsed = [[NSNumber numberWithInteger:audioCurrentTimeSeconds] stringValue];
-
-            [that sendDataToJS:@{@"currentTime": elapsed}];
-            NSLog(@"update time - %@", elapsed);
+            if (passOneUpdateTick == true) {
+                passOneUpdateTick = false;
+            } else {
+                CMTime audioCurrentTime = that.audioPlayer.currentTime;
+                int audioCurrentTimeSeconds = CMTimeGetSeconds(audioCurrentTime);
+                NSString *elapsed = [[NSNumber numberWithInteger:audioCurrentTimeSeconds] stringValue];
+                
+                [that sendDataToJS:@{@"currentTime": elapsed}];
+                NSLog(@"update time - %@", elapsed);
+            }
         }];
 
         // Listener for buffering progress
