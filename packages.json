@@ -1,0 +1,16 @@
+{
+  "name": "ionic-plugin-keyboard",
+  "version": "1.0.0",
+  "cordova": {
+    "id": "ionic-plugin-keyboard",
+    "platforms": [
+      "ios"
+    ]
+  },
+  "description": "Ionic Keyboard Plugin",
+  "repository": "https://github.com/WinGood/cordova-audio-player.git",
+  "issue": "https://github.com/WinGood/cordova-audio-player/issues",
+  "keywords": [
+    "cordova"
+  ]
+}
