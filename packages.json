@@ -1,8 +1,8 @@
 {
-  "name": "ionic-plugin-keyboard",
+  "name": "cordova-plugin-rcplayer",
   "version": "1.0.0",
   "cordova": {
-    "id": "ionic-plugin-keyboard",
+    "id": "cordova-plugin-rcplayer",
     "platforms": [
       "ios"
     ]
