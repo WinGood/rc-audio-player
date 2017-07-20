@@ -133,6 +133,11 @@ static bool passOneUpdateTick = false;
     
     [self sendDataToJS:@{@"currentTime": currentTime}];
     [self.audioPlayer seekToTime:seekTime];
+    
+    // update playnow widget
+    NSMutableDictionary *playInfo = [NSMutableDictionary dictionaryWithDictionary:[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo];
+    [playInfo setObject:currentTime forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
+    center.nowPlayingInfo = playInfo;
 }
 
 // Get id for JS callback
