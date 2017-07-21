@@ -48,6 +48,9 @@ static bool passOneUpdateTick = false;
 
 - (void)initSong:(CDVInvokedUrlCommand*)command
 {
+    // remove current audio if it's exist
+    [self stop:nil];
+    
     initCallbackID = command.callbackId;
     center = [MPNowPlayingInfoCenter defaultCenter];
     NSDictionary *initSongDict = [command.arguments objectAtIndex:0];
@@ -75,8 +78,6 @@ static bool passOneUpdateTick = false;
 
     NSURL *soundUrl = [[NSURL alloc] initWithString:initSongDict[@"url"]];
     AVURLAsset* audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:nil];
-    
-    _isLoop = [NSNumber numberWithInteger:0];
 
     songIsLoaded = false;
     readyToPlay = false;
@@ -85,12 +86,6 @@ static bool passOneUpdateTick = false;
     songIsStopped = false;
     passOneUpdateTick = false;
     
-    // Stop loading previous song if it exits
-    if (self.audioPlayer.currentItem) {
-        [self.audioPlayer.currentItem cancelPendingSeeks];
-        [self.audioPlayer.currentItem.asset cancelLoading];
-        [self sendDataToJS:@{@"bufferProgress": @"0"}];
-    }
     
     [audioAsset loadValuesAsynchronouslyForKeys:@[@"duration"] completionHandler:^{
         [self unregisterAudioListeners];
@@ -104,8 +99,6 @@ static bool passOneUpdateTick = false;
         }
         
         [self sendDuration];
-        [self sendDataToJS:@{@"loop": _isLoop}];
-        
         [self registerAudioListeners];
         
         NSLog(@"Song title %@", _title);
@@ -120,6 +113,7 @@ static bool passOneUpdateTick = false;
 
 - (void) setLoopFromJS: (CDVInvokedUrlCommand*) command {
     _isLoop = [command.arguments objectAtIndex:0];
+    NSLog(@"%@", _isLoop);
     [self sendDataToJS:@{@"loop": _isLoop}];
 }
 
@@ -231,7 +225,14 @@ static bool passOneUpdateTick = false;
 - (void)stop:(CDVInvokedUrlCommand*)command
 {
     NSLog(@"stop");
+    
+    _isLoop = [NSNumber numberWithInteger:0];
+    
     [self.audioPlayer pause];
+    [self.audioPlayer.currentItem cancelPendingSeeks];
+    [self.audioPlayer.currentItem.asset cancelLoading];
+    [self sendDataToJS:@{@"bufferProgress": @"0"}];
+    [self sendDataToJS:@{@"loop": _isLoop}];
     [self unregisterAudioListeners];
     
     self.audioPlayer = nil;
@@ -393,8 +394,8 @@ static bool passOneUpdateTick = false;
             CMTimeRange timeRange = [[loadedTimeRanges objectAtIndex:0] CMTimeRangeValue];
             Float64 startSeconds = CMTimeGetSeconds(timeRange.start);
             Float64 durationSeconds = CMTimeGetSeconds(timeRange.duration);
-
-            float percent = (startSeconds + durationSeconds) * 100 / CMTimeGetSeconds(self.audioPlayer.currentItem.duration);
+            
+            float percent = (startSeconds + durationSeconds) / CMTimeGetSeconds(self.audioPlayer.currentItem.duration) * 100;
 
             NSString *percentString = [[NSNumber numberWithFloat:percent] stringValue];
 
