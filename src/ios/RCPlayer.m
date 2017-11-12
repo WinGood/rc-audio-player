@@ -21,7 +21,7 @@ static bool passOneUpdateTick = false;
 - (void)pluginInitialize
 {
     // Playback audio in background mode
-    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+    audioSession = [AVAudioSession sharedInstance];
     BOOL ok;
     NSError *setCategoryError = nil;
     ok = [audioSession setCategory:AVAudioSessionCategoryPlayback error:&setCategoryError];
@@ -220,6 +220,7 @@ static bool passOneUpdateTick = false;
     NSLog(@"pause");
     [self.audioPlayer pause];
     [self updateMusicControls:true];
+    [audioSession setActive:NO withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation error:nil];
 }
 
 - (void)stop:(CDVInvokedUrlCommand*)command
