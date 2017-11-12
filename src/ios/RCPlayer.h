@@ -9,6 +9,7 @@
     NSString *subscribeCallbackID;
     CDVPluginResult *plresult;
     MPNowPlayingInfoCenter *center;
+    AVAudioSession *audioSession;
 }
 
 - (void) initSong:(CDVInvokedUrlCommand*)command;
