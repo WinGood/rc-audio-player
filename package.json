@@ -1,13 +1,13 @@
 {
   "name": "cordova-plugin-rcplayer",
-  "version": "1.0.1",
+  "version": "0.0.1",
   "cordova": {
     "id": "cordova-plugin-rcplayer",
     "platforms": [
       "ios"
     ]
   },
-  "description": "Ionic Keyboard Plugin",
+  "description": "",
   "repository": "https://github.com/WinGood/cordova-audio-player.git",
   "issue": "https://github.com/WinGood/cordova-audio-player/issues",
   "keywords": [
