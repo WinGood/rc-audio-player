@@ -1,15 +1,15 @@
 {
-  "name": "cordova-plugin-rcplayer",
+  "name": "cordova-rc-audio-player",
   "version": "0.0.1",
   "cordova": {
-    "id": "cordova-plugin-rcplayer",
+    "id": "cordova-rc-audio-player",
     "platforms": [
       "ios"
     ]
   },
   "description": "",
-  "repository": "https://github.com/WinGood/cordova-audio-player.git",
-  "issue": "https://github.com/WinGood/cordova-audio-player/issues",
+  "repository": "https://github.com/WinGood/rc-audio-player.git",
+  "issue": "https://github.com/WinGood/rc-audio-player.git/issues",
   "keywords": [
     "cordova"
   ]

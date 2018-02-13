@@ -1,23 +1,29 @@
 /*global cordova, module*/
 
 module.exports = {
-  initSong: function(params, successCallback, errorCallback) {
-    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'initSong', [params]);
+  initQueue: function(params, successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'initQueue', [params]);
+  },
+  add: function(params, successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'add', [params]);
+  },
+  remove: function(params, successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'remove', [params]);
+  },
+  playTrack: function(params, successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'playTrack', [params]);
+  },
+  pauseTrack: function(params, successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'pauseTrack', [params]);
   },
   setLoop: function(flag) {
-    cordova.exec(function() {}, function() {}, 'RCPlayer', 'setLoopFromJS', [flag]);
+    cordova.exec(function() {}, function() {}, 'RCPlayer', 'setLoopJS', [flag]);
   },
   setCurrentTime: function(seconds) {
-    cordova.exec(function() {}, function() {}, 'RCPlayer', 'setCurrentTimeFromJS', [seconds]);
+    cordova.exec(function() {}, function() {}, 'RCPlayer', 'setCurrentTimeJS', [seconds]);
   },
-  play: function(successCallback, errorCallback) {
-    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'play');
-  },
-  pause: function(successCallback, errorCallback) {
-    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'pause');
-  },
-  stop: function(successCallback, errorCallback) {
-    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'stop');
+  reset: function(successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, 'RCPlayer', 'reset');
   },
   subscribe: function (onUpdate) {
     module.exports.updateCallback = onUpdate;

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
-        id="cordova-plugin-rcplayer"
+        id="cordova-rc-audio-player"
         version="0.0.1">
 
     <name>RCPlayer</name>
@@ -22,6 +22,12 @@
 
         <header-file src="src/ios/RCPlayer.h" target-dir="RCPlayerPlugin"/>
         <source-file src="src/ios/RCPlayer.m" target-dir="RCPlayerPlugin"/>
+
+        <header-file src="src/ios/RCPlayerSong.h" target-dir="RCPlayerPlugin"/>
+        <source-file src="src/ios/RCPlayerSong.m" target-dir="RCPlayerPlugin"/>
+
+        <header-file src="src/ios/AVQueuePlayerPrevious.h" target-dir="RCPlayerPlugin"/>
+        <source-file src="src/ios/AVQueuePlayerPrevious.m" target-dir="RCPlayerPlugin"/>
     </platform>
 
 </plugin>
