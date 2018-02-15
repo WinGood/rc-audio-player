@@ -176,17 +176,22 @@
 
 - (void)add:(CDVInvokedUrlCommand*)command
 {
-    NSDictionary *songInfo = [command.arguments objectAtIndex:0];
-    RCPlayerSong *song = [[RCPlayerSong alloc] init];
+    NSDictionary *initSongDict = [command.arguments objectAtIndex:0];
+    NSArray *initQueue = [initSongDict valueForKeyPath:@"queue"];
     
-    [song setCode:songInfo[@"code"]];
-    [song setArtist:songInfo[@"artist"]];
-    [song setTitle:songInfo[@"title"]];
-    [song setAlbum:songInfo[@"album"]];
-    [song setCover:songInfo[@"cover"]];
-    [song setUrl:songInfo[@"url"]];
-    
-    [needAddToQueueWhenItWillBeInited addObject:song];
+    for (int i = 0; i < [initQueue count]; i++) {
+        NSDictionary *songInfo = initQueue[i];
+        RCPlayerSong *song = [[RCPlayerSong alloc] init];
+        
+        [song setCode:songInfo[@"code"]];
+        [song setArtist:songInfo[@"artist"]];
+        [song setTitle:songInfo[@"title"]];
+        [song setAlbum:songInfo[@"album"]];
+        [song setCover:songInfo[@"cover"]];
+        [song setUrl:songInfo[@"url"]];
+        
+        [needAddToQueueWhenItWillBeInited addObject:song];
+    }
     
     NSLog(@"indexInQueue indexInQueue - add");
     
@@ -227,6 +232,7 @@
         NSURL *soundUrl = [[NSURL alloc] initWithString:currentSong.url];
         AVURLAsset *audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:@{@"AVURLAssetHTTPHeaderFieldsKey" : headers}];
         NSLog(@"indexInQueue: %d", indexInQueue);
+        NSLog(@"indexInQueue currentSong url: %@", currentSong.url);
         [queue replaceObjectAtIndex:indexInQueue withObject:currentSong];
         
         [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
@@ -239,7 +245,7 @@
                                 [playerItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionNew context:nil];
                                 [player insertItem:playerItem afterItem: nil];
                                 
-                                NSLog(@"SONG WAS ADDED!!");
+                                NSLog(@"indexInQueue SONG WAS ADDED!!");
                             });
              
          }];
@@ -250,7 +256,33 @@
 
 - (void)remove:(CDVInvokedUrlCommand*)command
 {
-    NSDictionary *initSongDict = [command.arguments objectAtIndex:0];
+    NSLog(@"remove arguments - %@", command.arguments);
+    NSNumber *startNumber = [command.arguments objectAtIndex:0];
+    NSNumber *endNumber = [command.arguments objectAtIndex:1];
+    NSDictionary *songInfo = [command.arguments objectAtIndex:2];
+    int start = [startNumber intValue];
+    int end = [endNumber intValue];
+    NSLog(@"remove songInfo %@", songInfo);
+    NSLog(@"remove start %d", start);
+    NSLog(@"remove end %d",  end);
+//
+    NSArray<RCPlayerSong *> *splice = [queue subarrayWithRange:NSMakeRange(start, end)];
+    NSMutableArray *result = [splice copy];
+////
+    if (songInfo) {
+        RCPlayerSong *song = [[RCPlayerSong alloc] init];
+
+        [song setCode:songInfo[@"code"]];
+        [song setArtist:songInfo[@"artist"]];
+        [song setTitle:songInfo[@"title"]];
+        [song setAlbum:songInfo[@"album"]];
+        [song setCover:songInfo[@"cover"]];
+        [song setUrl:songInfo[@"url"]];
+
+//        [result insertObject:song atIndex:0];
+    }
+
+    NSLog(@"remove queue result %@", result);
 }
 
 - (void)playTrack:(CDVInvokedUrlCommand*)command
@@ -258,6 +290,7 @@
     NSString *shouldPlayCode = [command.arguments objectAtIndex:0];
     
     if ([queue count] == 0) return;
+    //
 //    int findedIndex = [self getSongIndexInQueueByCode:shouldPlayCode];
 //    if (findedIndex != -1) {
 //        if ([playerItems count] > findedIndex) {
@@ -584,6 +617,8 @@
 - (void)setCurrentTimeJS:(CDVInvokedUrlCommand*)command
 {
     NSNumber *selectedTime = [command.arguments objectAtIndex:0];
+    if ([selectedTime isKindOfClass:[NSNull class]]) return;
+    
     NSLog(@"RCPlayer setCurrentTimeJS, %@", selectedTime);
     [self setCurrentTimeForPlayer:[selectedTime intValue]];
 }
