@@ -7,6 +7,9 @@ module.exports = {
   add: function(params, successCallback, errorCallback) {
     cordova.exec(successCallback, errorCallback, 'RCPlayer', 'add', [params]);
   },
+  replace: function(index, song) {
+    cordova.exec(function() {}, function() {}, 'RCPlayer', 'replaceSong', [index, song]);
+  },
   remove: function(start, end, song) {
     cordova.exec(function() {}, function() {}, 'RCPlayer', 'remove', [start, end, song]);
   },

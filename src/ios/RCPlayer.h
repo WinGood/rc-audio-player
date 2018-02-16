@@ -29,6 +29,7 @@
 
 - (void) initQueue:(CDVInvokedUrlCommand*)command; // DONE
 - (void) add:(CDVInvokedUrlCommand*)command; // DONE insertBeforeId (optional)
+- (void) replaceSong:(CDVInvokedUrlCommand*)command; //
 - (void) remove:(CDVInvokedUrlCommand*)command; // from trackId to 1, set song (optional)
 - (void) playTrack:(CDVInvokedUrlCommand*)command; // DONE
 - (void) pauseTrack:(CDVInvokedUrlCommand*)command; // DONE

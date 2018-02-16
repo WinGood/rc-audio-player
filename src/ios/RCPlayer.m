@@ -254,6 +254,51 @@
     [needAddToQueueWhenItWillBeInited removeAllObjects];
 }
 
+- (void)replaceSong:(CDVInvokedUrlCommand*)command
+{
+    NSNumber *startNumber = [command.arguments objectAtIndex:0];
+    NSDictionary *songInfo = [command.arguments objectAtIndex:1];
+    int start = [startNumber intValue];
+    
+    NSLog(@"replace arguments - %d, %@", start, songInfo);
+    
+    if ([queue count] > start) {
+        RCPlayerSong *song = [[RCPlayerSong alloc] init];
+        [song setCode:songInfo[@"code"]];
+        [song setArtist:songInfo[@"artist"]];
+        [song setTitle:songInfo[@"title"]];
+        [song setAlbum:songInfo[@"album"]];
+        [song setCover:songInfo[@"cover"]];
+        [song setUrl:songInfo[@"url"]];
+        
+        NSMutableDictionary *headers = [NSMutableDictionary dictionary];
+        [headers setObject:@"Your UA" forKey:@"User-Agent"];
+        NSURL *soundUrl = [[NSURL alloc] initWithString:song.url];
+        AVURLAsset *audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:@{@"AVURLAssetHTTPHeaderFieldsKey" : headers}];
+        
+//        NSLog(@"replace queue before %@", queue);
+        
+//        [queue insertObject:song atIndex:start];
+        
+//        NSLog(@"replace queue after %@", queue);
+        
+//        [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
+//         {
+//             dispatch_async(dispatch_get_main_queue(), ^
+//                            {
+//                                AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
+////                                [playerItems replaceObjectAtIndex:indexInQueue withObject:playerItem];
+//                                [playerItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:nil];
+//                                [playerItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionNew context:nil];
+////                                [player insertItem:playerItem afterItem: nil];
+//
+//                                NSLog(@"replace SONG WAS ADDED!!");
+//                            });
+//
+//         }];
+    }
+}
+
 - (void)remove:(CDVInvokedUrlCommand*)command
 {
     NSLog(@"remove arguments - %@", command.arguments);
@@ -266,11 +311,12 @@
     NSLog(@"remove start %d", start);
     NSLog(@"remove end %d",  end);
 //
-    NSArray<RCPlayerSong *> *splice = [queue subarrayWithRange:NSMakeRange(start, end)];
-    NSMutableArray *result = [splice copy];
-////
+//    NSArray<RCPlayerSong *> *splice = [queue subarrayWithRange:NSMakeRange(start, end)];
+//    NSMutableArray *result = [splice copy];
+    
     if (songInfo) {
         RCPlayerSong *song = [[RCPlayerSong alloc] init];
+        NSMutableArray *resultWithNewSong = [[NSMutableArray alloc] init];
 
         [song setCode:songInfo[@"code"]];
         [song setArtist:songInfo[@"artist"]];
@@ -278,11 +324,25 @@
         [song setAlbum:songInfo[@"album"]];
         [song setCover:songInfo[@"cover"]];
         [song setUrl:songInfo[@"url"]];
-
-//        [result insertObject:song atIndex:0];
+        
+        for (NSUInteger i = 0; i < [queue count] + 1; i++) {
+            [resultWithNewSong addObject:[RCPlayerSong alloc]];
+        }
+        
+        for (int i = 0; i < [queue count]; i++) {
+            [resultWithNewSong replaceObjectAtIndex:i withObject:queue[i]];
+        }
+        
+        for (int i = 0; i < [queue count] + 1; i++) {
+            if (i == start) {
+                [resultWithNewSong replaceObjectAtIndex:i withObject:song];
+            }
+        }
+        
+        NSLog(@"remove queue resultWithNewSong %@", resultWithNewSong);
     }
 
-    NSLog(@"remove queue result %@", result);
+//    NSLog(@"remove queue result %@", result);
 }
 
 - (void)playTrack:(CDVInvokedUrlCommand*)command
@@ -400,7 +460,7 @@
 {
     int index = -1;
     for (int i = 0; i < [queue count]; i++) {
-        if (queue[i].code == code) {
+        if ([queue[i].code isEqualToString:code]) {
             index = i;
         }
     }
