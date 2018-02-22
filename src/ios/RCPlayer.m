@@ -381,13 +381,13 @@
         playerIsPlaying = true;
         playerShouldPlayWhenItWillBeReady = false;
         shouldPlayWhenPlayerWillBeReady = @"";
-        
-        [self sendDuration];
-        [self updateMusicControls];
     } else {
         playerShouldPlayWhenItWillBeReady = true;
         shouldPlayWhenPlayerWillBeReady = player.currentItem.accessibilityValue;
     }
+    
+    [self sendDuration];
+    [self updateMusicControls];
 }
 
 -(NSURL *)urlOfPlayerItem:(AVPlayerItem *)item{
@@ -409,8 +409,10 @@
 {
     int index = -1;
     for (int i = 0; i < [queue count]; i++) {
-        if ([queue[i].code containsString:code]) {
-            index = i;
+        if ((queue[i].code != nil) && (queue[i].code != NULL)) {
+            if ([queue[i].code containsString:code]) {
+                index = i;
+            }
         }
     }
     return index;

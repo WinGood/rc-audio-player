@@ -75,11 +75,14 @@
         // The next two lines are necessary since RemoveAllItems resets both the nowPlayingIndex and _itemsForPlayer
         int tempNowPlayingIndex = nowPlayingIndex;
         NSMutableArray *tempPlaylist = [[NSMutableArray alloc]initWithArray:_itemsForPlayer];
-        [self removeAllItems];
+        //        [super removeAllItems];
         isCalledFromPlayPreviousItem = YES;
-        for (int i = tempNowPlayingIndex - 1; i < [tempPlaylist count]; i++) {
-            [self insertItem:[tempPlaylist objectAtIndex:i] afterItem:nil];
-        }
+        [self replaceCurrentItemWithPlayerItem:tempPlaylist[tempNowPlayingIndex - 1]];
+        //        for (int i = tempNowPlayingIndex - 1; i < [tempPlaylist count]; i++) {
+        //            if ([self canInsertItem:[tempPlaylist objectAtIndex:i] afterItem:nil]) {
+        //                [self insertItem:[tempPlaylist objectAtIndex:i] afterItem:nil];
+        //            }
+        //        }
         isCalledFromPlayPreviousItem = NO;
         // The temp index is necessary since removeAllItems resets the nowPlayingIndex
         nowPlayingIndex = tempNowPlayingIndex - 1;
@@ -143,6 +146,16 @@
     if (nowPlayingIndex < [_itemsForPlayer count] - 1){
         nowPlayingIndex++;
     }
+    
+    //    nowPlayingIndex = nowPlayingIndex + 1;
+    
+    [self pause];
+    [self seekToTime:kCMTimeZero toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
+    int tempNowPlayingIndex = nowPlayingIndex;
+    NSMutableArray *tempPlaylist = [[NSMutableArray alloc]initWithArray:_itemsForPlayer];
+    [self replaceCurrentItemWithPlayerItem:tempPlaylist[tempNowPlayingIndex]];
+    [self seekToTime:kCMTimeZero toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
+    [self play];
 }
 -(void)insertItem:(AVPlayerItem *)item afterItem:(AVPlayerItem *)afterItem
 {
