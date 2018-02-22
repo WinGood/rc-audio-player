@@ -7,12 +7,10 @@
 #import "RCPlayerSong.h"
 
 @interface RCPlayer : CDVPlugin {
-//    NSString *initCallbackID;
     NSString *subscribeCallbackID;
     MPNowPlayingInfoCenter *center;
     AVAudioSession *audioSession;
     AVQueuePlayerPrevious *player;
-    NSMutableArray<AVPlayerItem *> *playerItems;
     NSMutableArray<RCPlayerSong *> *queue;
     NSMutableArray<RCPlayerSong *> *needAddToQueueWhenItWillBeInited;
     NSMutableArray<RCPlayerSong *> *needRemoveFromQueueWhenItWillBeInited;
@@ -29,8 +27,8 @@
 
 - (void) initQueue:(CDVInvokedUrlCommand*)command; // DONE
 - (void) add:(CDVInvokedUrlCommand*)command; // DONE insertBeforeId (optional)
-- (void) replaceSong:(CDVInvokedUrlCommand*)command; //
-- (void) remove:(CDVInvokedUrlCommand*)command; // from trackId to 1, set song (optional)
+- (void) replaceTrack:(CDVInvokedUrlCommand*)command; //
+- (void) removeTrack:(CDVInvokedUrlCommand*)command; //
 - (void) playTrack:(CDVInvokedUrlCommand*)command; // DONE
 - (void) pauseTrack:(CDVInvokedUrlCommand*)command; // DONE
 - (void) reset:(CDVInvokedUrlCommand*)command; // DONE
@@ -38,3 +36,5 @@
 - (void) setCurrentTimeJS:(CDVInvokedUrlCommand*)command; // DONE
 
 @end
+
+

@@ -33,7 +33,6 @@
     
     // init variables
     queue = [[NSMutableArray alloc] init];
-    //    playerItems = [[NSMutableArray alloc] init];
     needAddToQueueWhenItWillBeInited = [[NSMutableArray alloc] init];
     needRemoveFromQueueWhenItWillBeInited = [[NSMutableArray alloc] init];
     playerIsPlaying = false;
@@ -44,6 +43,9 @@
     // init AVQueuePlayerPrevious
     player = [[AVQueuePlayerPrevious alloc] init];
     player.allowsExternalPlayback = false;
+    
+    // init MPNowPlayingInfoCenter
+    center = [MPNowPlayingInfoCenter defaultCenter];
     
     if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"10.0")) {
         player.automaticallyWaitsToMinimizeStalling = false;
@@ -72,9 +74,29 @@
         
         NSLog(@"RCPlayer: was update current time of song - %@", elapsed);
     }];
+}
+
+- (AVURLAsset*)getAudioAssetForSong:(RCPlayerSong*)song
+{
+    NSMutableDictionary *headers = [NSMutableDictionary dictionary];
+    [headers setObject:@"Your UA" forKey:@"User-Agent"];
+    NSURL *soundUrl = [[NSURL alloc] initWithString:song.url];
+    AVURLAsset *audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:@{@"AVURLAssetHTTPHeaderFieldsKey" : headers}];
+    return audioAsset;
+}
+
+-(RCPlayerSong*)getRCPlayerSongByInfo:(NSDictionary*)songInfo
+{
+    RCPlayerSong *song = [[RCPlayerSong alloc] init];
     
-    // init MPNowPlayingInfoCenter
-    center = [MPNowPlayingInfoCenter defaultCenter];
+    [song setCode:songInfo[@"code"]];
+    [song setArtist:songInfo[@"artist"]];
+    [song setTitle:songInfo[@"title"]];
+    [song setAlbum:songInfo[@"album"]];
+    [song setCover:songInfo[@"cover"]];
+    [song setUrl:songInfo[@"url"]];
+    
+    return song;
 }
 
 # pragma mark - Player methods
@@ -87,20 +109,9 @@
     NSDictionary *initSongDict = [command.arguments objectAtIndex:0];
     NSArray *initQueue = [initSongDict valueForKeyPath:@"queue"];
     
-    queuePointer = 0;
-    queueWasInited = false;
-    playerShouldPlayWhenItWillBeReady = false;
-    [queue removeAllObjects];
-    //    [playerItems removeAllObjects];
-    
-    // TODO figure out how I can avoid it
-    //    NSURL *emptySoundUrl = [[NSURL alloc] initWithString:@""];
-    //    AVURLAsset *emptyAsset = [AVURLAsset URLAssetWithURL:emptySoundUrl options:nil];
-    //    AVPlayerItem *playerItemEmpty = [[AVPlayerItem alloc] initWithAsset:emptyAsset];
-    
+    // filling empty songs
     for (NSUInteger i = 0; i < [initQueue count]; i++) {
         [queue addObject:[RCPlayerSong alloc]];
-        //        [playerItems addObject:playerItemEmpty];
     }
     
     if ([initQueue count] == 0) {
@@ -114,23 +125,8 @@
     int __block initedSongs = 0;
     
     for (int i = 0; i < [initQueue count]; i++) {
-        // shaping queue
-        NSDictionary *songInfo = initQueue[i];
-        RCPlayerSong *song = [[RCPlayerSong alloc] init];
-        
-        [song setCode:songInfo[@"code"]];
-        [song setArtist:songInfo[@"artist"]];
-        [song setTitle:songInfo[@"title"]];
-        [song setAlbum:songInfo[@"album"]];
-        [song setCover:songInfo[@"cover"]];
-        [song setUrl:songInfo[@"url"]];
-        
-        // TODO move to separate method
-        NSMutableDictionary *headers = [NSMutableDictionary dictionary];
-        [headers setObject:@"Your UA" forKey:@"User-Agent"];
-        
-        NSURL *soundUrl = [[NSURL alloc] initWithString:song.url];
-        AVURLAsset *audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:@{@"AVURLAssetHTTPHeaderFieldsKey" : headers}];
+        RCPlayerSong *song = [self getRCPlayerSongByInfo: initQueue[i]];
+        AVURLAsset *audioAsset = [self getAudioAssetForSong:song];
         
         [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
          {
@@ -189,16 +185,7 @@
     NSArray *initQueue = [initSongDict valueForKeyPath:@"queue"];
     
     for (int i = 0; i < [initQueue count]; i++) {
-        NSDictionary *songInfo = initQueue[i];
-        RCPlayerSong *song = [[RCPlayerSong alloc] init];
-        
-        [song setCode:songInfo[@"code"]];
-        [song setArtist:songInfo[@"artist"]];
-        [song setTitle:songInfo[@"title"]];
-        [song setAlbum:songInfo[@"album"]];
-        [song setCover:songInfo[@"cover"]];
-        [song setUrl:songInfo[@"url"]];
-        
+        RCPlayerSong *song = [self getRCPlayerSongByInfo: initQueue[i]];
         [needAddToQueueWhenItWillBeInited addObject:song];
     }
     
@@ -210,9 +197,6 @@
     } else {
         NSLog(@"indexInQueue indexInQueue - false");
     }
-    
-    // buffering progress
-    // status
 }
 
 - (void)addSongsInQueue:(NSMutableArray<RCPlayerSong *>*)songs
@@ -224,18 +208,15 @@
     for (NSUInteger i = [queue count]; i < startIndex + [songs count]; i++) {
         NSLog(@"indexInQueue new item added");
         [queue addObject:[RCPlayerSong alloc]];
-        //        [playerItems addObject:playerItemEmpty];
     }
     
     for (int i = 0; i < [songs count]; i++) {
-        NSMutableDictionary *headers = [NSMutableDictionary dictionary];
-        [headers setObject:@"Your UA" forKey:@"User-Agent"];
-        
         int indexInQueue = startIndex + i;
         int previousIndex = indexInQueue - 1;
+        
         RCPlayerSong *currentSong = songs[i];
-        NSURL *soundUrl = [[NSURL alloc] initWithString:currentSong.url];
-        AVURLAsset *audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:@{@"AVURLAssetHTTPHeaderFieldsKey" : headers}];
+        AVURLAsset *audioAsset = [self getAudioAssetForSong:currentSong];
+        
         NSLog(@"indexInQueue: %d", indexInQueue);
         NSLog(@"indexInQueue currentSong url: %@", currentSong.url);
         
@@ -268,7 +249,13 @@
 }
 
 // replaceSongQueue
-- (void)remove:(CDVInvokedUrlCommand*)command
+- (void)removeTrack:(CDVInvokedUrlCommand*)command
+{
+    
+}
+
+// replaceSongQueue
+- (void)replaceTrack:(CDVInvokedUrlCommand*)command
 {
     NSLog(@"remove arguments - %@", command.arguments);
     NSNumber *startNumber = [command.arguments objectAtIndex:0];
@@ -334,11 +321,7 @@
 - (void)playTrack:(CDVInvokedUrlCommand*)command
 {
     NSString *shouldPlayCode = [command.arguments objectAtIndex:0];
-    
     if ([queue count] == 0) return;
-    
-    // TODO check if queue/player will be empty
-    
     [self play:shouldPlayCode];
 }
 
@@ -387,12 +370,8 @@
     }
     
     [self sendDuration];
+    [self sendBuffetingProgressForCurrentPlayerItem];
     [self updateMusicControls];
-}
-
--(NSURL *)urlOfPlayerItem:(AVPlayerItem *)item{
-    if (![item.asset isKindOfClass:AVURLAsset.class]) return nil;
-    return [(AVURLAsset *)item.asset URL];
 }
 
 - (void)pauseTrack:(CDVInvokedUrlCommand*)command
@@ -409,13 +388,39 @@
 {
     int index = -1;
     for (int i = 0; i < [queue count]; i++) {
-        if ((queue[i].code != nil) && (queue[i].code != NULL)) {
+        if (queue[i].code != nil && queue[i].code != NULL) {
             if ([queue[i].code containsString:code]) {
                 index = i;
             }
         }
     }
     return index;
+}
+
+- (void)sendBuffetingProgressForCurrentPlayerItem
+{
+    if (player.currentItem) {
+        NSArray *loadedTimeRanges = [[player currentItem] loadedTimeRanges];
+        if ([loadedTimeRanges count] > 0) {
+            CMTimeRange timeRange = [[loadedTimeRanges objectAtIndex:0] CMTimeRangeValue];
+            Float64 startSeconds = CMTimeGetSeconds(timeRange.start);
+            Float64 durationSeconds = CMTimeGetSeconds(timeRange.duration);
+            
+            float percent = (startSeconds + durationSeconds) / CMTimeGetSeconds(player.currentItem.duration) * 100;
+            NSString *percentString = [[NSNumber numberWithFloat:percent] stringValue];
+            
+            [self sendDataToJS:@{@"bufferProgress": percentString}];
+            
+            NSLog(@"RCPlayer song buffering progress %@", percentString);
+            
+            if (percent >= 100) {
+                NSLog(@"RCPlayer: loadedTimeRanges remove listener");
+                @try {
+                    [player.currentItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
+                } @catch (id anException) {}
+            }
+        }
+    }
 }
 
 // TODO sometimes doesn't work correctly
@@ -448,13 +453,15 @@
     [player.currentItem.asset cancelLoading];
     
     [self removeObserversFromPlayerItems];
-    //    [player removeItem:player.currentItem];
+    
     for (int i = 0; i < [player.items count]; i++) {
         [player removeItem:player.items[i]];
     }
     
     needLoopSong = [NSNumber numberWithInteger:0];
     queuePointer = 0;
+    queueWasInited = false;
+    playerShouldPlayWhenItWillBeReady = false;
     
     [queue removeAllObjects];
     [needAddToQueueWhenItWillBeInited removeAllObjects];
@@ -705,35 +712,8 @@
             }
         }
         NSLog(@"observeValueForKeyPath item code: %@", item.accessibilityValue);
-        //        if (item == shouldPlayItemWhenPlayerWillBeReady && item.status == AVPlayerItemStatusReadyToPlay) {
-        //            NSLog(@"observeValueForKeyPath AVPlayerItemStatusReadyToPlay");
-        //            [self play:shouldPlayWhenPlayerWillBeReady];
-        //        }
     }
     
-    //    if ([keyPath isEqualToString:@"status"] && playerShouldPlayWhenItWillBeReady) {
-    //        int findedIndex = [self getSongIndexInQueueByCode:shouldPlayWhenPlayerWillBeReady];
-    //        NSLog(@"observeValueForKeyPath findedIndex %d", findedIndex);
-    //        if (findedIndex != -1) {
-    //            if ([playerItems count] > findedIndex) {
-    //                AVPlayerItem *findedItem = [playerItems objectAtIndexedSubscript:findedIndex];
-    //                NSLog(@"observeValueForKeyPath findedItem %@", findedItem);
-    //
-    //                if ([object containsObject:findedItem]) {
-    //                    NSLog(@"observeValueForKeyPath should play");
-    //                    if (findedItem.status == AVPlayerStatusReadyToPlay) {
-    //                        if (playerShouldPlayWhenItWillBeReady) {
-    //                            [self play:shouldPlayWhenPlayerWillBeReady];
-    //                        }
-    //                        NSLog(@"observeValueForKeyPath Ready to play");
-    //                    } else if (findedItem.status == AVPlayerStatusFailed) {
-    //                        // something went wrong. player.error should contain some information
-    //                        NSLog(@"observeValueForKeyPath AVPlayerStatusFailed");
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
     
     // Progress of buffering audio
     if(object == player.currentItem && [keyPath isEqualToString:@"loadedTimeRanges"]) {
@@ -752,7 +732,9 @@
             
             if (percent >= 100) {
                 NSLog(@"RCPlayer: loadedTimeRanges remove listener");
-                [player.currentItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
+                @try {
+                    [player.currentItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
+                } @catch (id anException) {}
             }
         }
     }

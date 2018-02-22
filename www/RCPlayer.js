@@ -8,10 +8,10 @@ module.exports = {
     cordova.exec(successCallback, errorCallback, 'RCPlayer', 'add', [params]);
   },
   replace: function(index, song) {
-    cordova.exec(function() {}, function() {}, 'RCPlayer', 'replaceSong', [index, song]);
+    cordova.exec(function() {}, function() {}, 'RCPlayer', 'replaceTrack', [index, song]);
   },
-  remove: function(start, end, song) {
-    cordova.exec(function() {}, function() {}, 'RCPlayer', 'remove', [start, end, song]);
+  remove: function(index) {
+    cordova.exec(function() {}, function() {}, 'RCPlayer', 'removeTrack', [index]);
   },
   playTrack: function(params, successCallback, errorCallback) {
     cordova.exec(successCallback, errorCallback, 'RCPlayer', 'playTrack', [params]);
