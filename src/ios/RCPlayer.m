@@ -43,6 +43,7 @@
     // init AVQueuePlayerPrevious
     player = [[AVQueuePlayerPrevious alloc] init];
     player.allowsExternalPlayback = false;
+    player.volume = 0.1f;
     
     // init MPNowPlayingInfoCenter
     center = [MPNowPlayingInfoCenter defaultCenter];
@@ -72,31 +73,8 @@
             [that sendDataToJS:@{@"currentTime": elapsed}];
         }
         
-        NSLog(@"RCPlayer: was update current time of song - %@", elapsed);
+        NSLog(@"RCPlayer: was update current time of song %@", elapsed);
     }];
-}
-
-- (AVURLAsset*)getAudioAssetForSong:(RCPlayerSong*)song
-{
-    NSMutableDictionary *headers = [NSMutableDictionary dictionary];
-    [headers setObject:@"Your UA" forKey:@"User-Agent"];
-    NSURL *soundUrl = [[NSURL alloc] initWithString:song.url];
-    AVURLAsset *audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:@{@"AVURLAssetHTTPHeaderFieldsKey" : headers}];
-    return audioAsset;
-}
-
--(RCPlayerSong*)getRCPlayerSongByInfo:(NSDictionary*)songInfo
-{
-    RCPlayerSong *song = [[RCPlayerSong alloc] init];
-    
-    [song setCode:songInfo[@"code"]];
-    [song setArtist:songInfo[@"artist"]];
-    [song setTitle:songInfo[@"title"]];
-    [song setAlbum:songInfo[@"album"]];
-    [song setCover:songInfo[@"cover"]];
-    [song setUrl:songInfo[@"url"]];
-    
-    return song;
 }
 
 # pragma mark - Player methods
@@ -139,15 +117,15 @@
                                 NSInteger previousIndex = i - 1;
                                 
                                 if (previousIndex != -1) {
-                                    if ([player.items count] > previousIndex) {
+                                    if ([player.itemsForPlayer count] > previousIndex) {
                                         AVPlayerItem *previousItem = [player.items objectAtIndex:previousIndex];
                                         [player insertItem:playerItem afterItem: previousItem];
                                     } else {
                                         [player insertItem:playerItem afterItem: nil];
                                     }
                                 } else {
-                                    if ([player.items count] > 0) {
-                                        AVPlayerItem *firstItem = [player.items objectAtIndexedSubscript:0];
+                                    if ([player.itemsForPlayer count] > 0) {
+                                        AVPlayerItem *firstItem = [player.itemsForPlayer objectAtIndexedSubscript:0];
                                         [player insertItem:playerItem afterItem:firstItem];
                                         [player removeItem:firstItem];
                                         [player insertItem:firstItem afterItem:playerItem];
@@ -228,8 +206,8 @@
                                 [queue replaceObjectAtIndex:indexInQueue withObject:currentSong];
                                 
                                 // TODO check this with multiple songs
-                                if ([player.items count] > previousIndex) {
-                                    AVPlayerItem *previousItem = [player.items objectAtIndex:previousIndex];
+                                if ([player.itemsForPlayer count] > previousIndex) {
+                                    AVPlayerItem *previousItem = [player.itemsForPlayer objectAtIndex:previousIndex];
                                     [player insertItem:playerItem afterItem: previousItem];
                                 } else {
                                     [player insertItem:playerItem afterItem: nil];
@@ -248,73 +226,104 @@
     [needAddToQueueWhenItWillBeInited removeAllObjects];
 }
 
-// replaceSongQueue
 - (void)removeTrack:(CDVInvokedUrlCommand*)command
 {
+    NSNumber *index = [command.arguments objectAtIndex:0];
+    int removeByIndex = [index intValue];
     
+    NSLog(@"removeTrack queue before count %lu", (unsigned long)[queue count]);
+    
+    for (int i = 0; i < [queue count]; i++) {
+        if (i == removeByIndex) {
+            [queue removeObjectAtIndex:i];
+            NSLog(@"removeTrack was removed from queue");
+        }
+    }
+    
+    NSLog(@"removeTrack queue after count %lu", (unsigned long)[queue count]);
+    NSLog(@"removeTrack removeByIndex %lu", (unsigned long)removeByIndex);
+    NSLog(@"removeTrack count %lu", (unsigned long)[player.items count]);
+    NSLog(@"removeTrack itemsForPlayer %lu", (unsigned long)[player.itemsForPlayer count]);
+    
+    for (int i = 0; i < [player.itemsForPlayer count]; i++) {
+        if (i == removeByIndex) {
+            AVPlayerItem *findedPlayerItem = player.itemsForPlayer[i];
+            bool lastItem = [player.itemsForPlayer count] == 1;
+            bool itIsCurrentItem = (player.currentItem.accessibilityValue == findedPlayerItem.accessibilityValue);
+            
+            [self removeObserversFromPlayerByItem:findedPlayerItem];
+            
+            if (itIsCurrentItem) {
+                [player pause];
+                [player.currentItem cancelPendingSeeks];
+                [player.currentItem.asset cancelLoading];
+                NSMutableDictionary *playInfo = [NSMutableDictionary dictionaryWithDictionary:[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo];
+                [playInfo setObject:[NSNumber numberWithFloat:0.0f] forKey:MPNowPlayingInfoPropertyPlaybackRate];
+                center.nowPlayingInfo = playInfo;
+            }
+            
+            
+            int nextIndex = i + 1;
+            int prevIndex = i - 1;
+            
+            //            if ([player.itemsForPlayer count] > nextIndex && prevIndex != -1) {
+            //                AVPlayerItem *nextPlayerItem = player.itemsForPlayer[nextIndex];
+            //                AVPlayerItem *prevPlayerItem = player.itemsForPlayer[prevIndex];
+            //                [player insertItem:nextPlayerItem afterItem:prevPlayerItem];
+            //                NSLog(@"removeTrack was removed from middle");
+            //            }
+            
+            if (lastItem == false) {
+                //                [self removeObserversFromPlayerItems];
+                [player removeItem:findedPlayerItem];
+            } else {
+                //                [self removeObserversFromPlayerItems];
+                //                [player removeItem:findedPlayerItem];
+                [player removeAllItems];
+                center.nowPlayingInfo = nil;
+            }
+            
+            NSLog(@"removeTrack was removed from player");
+        }
+    }
 }
 
-// replaceSongQueue
 - (void)replaceTrack:(CDVInvokedUrlCommand*)command
 {
-    NSLog(@"remove arguments - %@", command.arguments);
-    NSNumber *startNumber = [command.arguments objectAtIndex:0];
-    NSNumber *endNumber = [command.arguments objectAtIndex:1];
-    NSDictionary *songInfo = [command.arguments objectAtIndex:2];
-    int start = [startNumber intValue];
-    int end = [endNumber intValue];
-    RCPlayerSong *song = [[RCPlayerSong alloc] init];
-    [song setCode:songInfo[@"code"]];
-    [song setArtist:songInfo[@"artist"]];
-    [song setTitle:songInfo[@"title"]];
-    [song setAlbum:songInfo[@"album"]];
-    [song setCover:songInfo[@"cover"]];
-    [song setUrl:songInfo[@"url"]];
+    NSLog(@"replaceTrack arguments - %@", command.arguments);
+    NSNumber *index = [command.arguments objectAtIndex:0];
+    NSDictionary *songInfo = [command.arguments objectAtIndex:1];
+    RCPlayerSong *song = [self getRCPlayerSongByInfo:songInfo];
     
+    int replaceByIndex = [index intValue];
     __block RCPlayer *that = self;
     
-    NSLog(@"remove songInfo %@", songInfo);
-    NSLog(@"remove start %d", start);
-    NSLog(@"remove end %d",  end);
-    
-    if (start >= 0) {
-        if (([player.items count] > start) && ([queue count] > start)) {
-            for (int i = 0; i < [player.items count]; i++) {
-                if (i == start) {
-                    NSMutableDictionary *headers = [NSMutableDictionary dictionary];
-                    [headers setObject:@"Your UA" forKey:@"User-Agent"];
-                    NSURL *soundUrl = [[NSURL alloc] initWithString:song.url];
-                    AVURLAsset *audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:@{@"AVURLAssetHTTPHeaderFieldsKey" : headers}];
-                    AVPlayerItem *needToReplaceItem = [player.items objectAtIndexedSubscript:i];
-                    
-                    @try {
-                        [needToReplaceItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
-                        [needToReplaceItem removeObserver:self forKeyPath:@"status" context:nil];
-                    } @catch (id anException) {}
-                    
-                    [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
-                     {
-                         dispatch_async(dispatch_get_main_queue(), ^
-                                        {
-                                            AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
-                                            [queue replaceObjectAtIndex:i withObject:song];
-                                            
-                                            [player insertItem:playerItem afterItem:needToReplaceItem];
-                                            [player removeItem:needToReplaceItem];
-                                            
-                                            playerItem.accessibilityValue = song.code;
-                                            [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
-                                            [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
-                                            
-                                            NSLog(@"SONG WAS REPLACED by index %d", i);
-                                        });
-                         
-                     }];
-                }
-            }
-        } else {
-            [self addSongsInQueue:[[NSMutableArray alloc] initWithObjects:song, nil]];
-        }
+    // need to add in the end of queue
+    if ([queue count] == replaceByIndex) {
+        NSMutableArray *needToAdd = [[NSMutableArray alloc] initWithObjects:song, nil];
+        [self addSongsInQueue:needToAdd];
+    } else if ([queue count] > replaceByIndex && [player.itemsForPlayer count] > replaceByIndex) {
+        AVURLAsset *audioAsset = [self getAudioAssetForSong:song];
+        [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
+         {
+             dispatch_async(dispatch_get_main_queue(), ^
+                            {
+                                [queue replaceObjectAtIndex:replaceByIndex withObject:song];
+                                
+                                AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
+                                AVPlayerItem *needToReplaceItem = [player.itemsForPlayer objectAtIndexedSubscript:replaceByIndex];
+                                
+                                [self removeObserversFromPlayerByItem:needToReplaceItem];
+                                
+                                [player insertItem:playerItem afterItem:needToReplaceItem];
+                                [player removeItem:needToReplaceItem];
+                                
+                                playerItem.accessibilityValue = song.code;
+                                [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
+                                [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
+                            });
+             
+         }];
     }
 }
 
@@ -453,10 +462,11 @@
     [player.currentItem.asset cancelLoading];
     
     [self removeObserversFromPlayerItems];
+    [player removeAllItems];
     
-    for (int i = 0; i < [player.items count]; i++) {
-        [player removeItem:player.items[i]];
-    }
+    //    for (int i = 0; i < [player.itemsForPlayer count]; i++) {
+    //        [player removeItem:player.itemsForPlayer[i]];
+    //    }
     
     needLoopSong = [NSNumber numberWithInteger:0];
     queuePointer = 0;
@@ -476,15 +486,53 @@
 
 - (void)removeObserversFromPlayerItems
 {
-    for (int i = 0; i < [player.items count]; i++) {
+    for (int i = 0; i < [player.itemsForPlayer count]; i++) {
         @try {
-            AVPlayerItem *currentItem = [player.items objectAtIndexedSubscript:i];
+            AVPlayerItem *currentItem = [player.itemsForPlayer objectAtIndexedSubscript:i];
             [currentItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
             [currentItem removeObserver:self forKeyPath:@"status" context:nil];
         } @catch (id anException) {}
     }
     
     [self sendDataToJS:@{@"bufferProgress": @"0"}];
+}
+
+- (void)removeObserversFromPlayerByItem:(AVPlayerItem*)playerItem
+{
+    @try {
+        [playerItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
+        [playerItem removeObserver:self forKeyPath:@"status" context:nil];
+        
+        for (int i = 0; i < [player.items count]; i++) {
+            if (player.items[i] == playerItem) {
+                [player.items[i] removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
+                [player.items[i] removeObserver:self forKeyPath:@"status" context:nil];
+            }
+        }
+    } @catch (id anException) {}
+}
+
+- (AVURLAsset*)getAudioAssetForSong:(RCPlayerSong*)song
+{
+    NSMutableDictionary *headers = [NSMutableDictionary dictionary];
+    [headers setObject:@"Your UA" forKey:@"User-Agent"];
+    NSURL *soundUrl = [[NSURL alloc] initWithString:song.url];
+    AVURLAsset *audioAsset = [AVURLAsset URLAssetWithURL:soundUrl options:@{@"AVURLAssetHTTPHeaderFieldsKey" : headers}];
+    return audioAsset;
+}
+
+-(RCPlayerSong*)getRCPlayerSongByInfo:(NSDictionary*)songInfo
+{
+    RCPlayerSong *song = [[RCPlayerSong alloc] init];
+    
+    [song setCode:songInfo[@"code"]];
+    [song setArtist:songInfo[@"artist"]];
+    [song setTitle:songInfo[@"title"]];
+    [song setAlbum:songInfo[@"album"]];
+    [song setCover:songInfo[@"cover"]];
+    [song setUrl:songInfo[@"url"]];
+    
+    return song;
 }
 
 # pragma mark - MPRemoteCommandCenter listeners
@@ -552,6 +600,8 @@
 # pragma mark - MPNowPlayingInfoCenter
 
 - (void)updateMusicControls {
+    if (queue[queuePointer] == nil) return;
+    
     NSString *artist = [queue objectAtIndex:queuePointer].artist;
     NSString *title = [queue objectAtIndex:queuePointer].title;
     NSString *album = [queue objectAtIndex:queuePointer].album;
