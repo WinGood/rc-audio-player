@@ -13,9 +13,7 @@
     AVQueuePlayerPrevious *player;
     NSMutableArray<RCPlayerSong *> *queue;
     NSMutableArray<RCPlayerSong *> *needAddToQueueWhenItWillBeInited;
-    NSMutableArray<RCPlayerSong *> *needRemoveFromQueueWhenItWillBeInited;
     AVPlayer *currentTimeObserver;
-    NSNumber *needLoopSong;
     NSString *shouldPlayWhenPlayerWillBeReady;
     bool queueWasInited;
     bool playerShouldPlayWhenItWillBeReady;
@@ -26,13 +24,12 @@
 // NEW INTERFACE
 
 - (void) initQueue:(CDVInvokedUrlCommand*)command; // DONE
-- (void) add:(CDVInvokedUrlCommand*)command; // DONE insertBeforeId (optional)
-- (void) replaceTrack:(CDVInvokedUrlCommand*)command; //
+- (void) add:(CDVInvokedUrlCommand*)command; // DONE
+- (void) replaceTrack:(CDVInvokedUrlCommand*)command; // DONE
 - (void) removeTrack:(CDVInvokedUrlCommand*)command; //
 - (void) playTrack:(CDVInvokedUrlCommand*)command; // DONE
 - (void) pauseTrack:(CDVInvokedUrlCommand*)command; // DONE
 - (void) reset:(CDVInvokedUrlCommand*)command; // DONE
-- (void) setLoopJS:(CDVInvokedUrlCommand*)command; // DONE
 - (void) setCurrentTimeJS:(CDVInvokedUrlCommand*)command; // DONE
 
 @end

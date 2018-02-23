@@ -34,7 +34,6 @@
     // init variables
     queue = [[NSMutableArray alloc] init];
     needAddToQueueWhenItWillBeInited = [[NSMutableArray alloc] init];
-    needRemoveFromQueueWhenItWillBeInited = [[NSMutableArray alloc] init];
     playerIsPlaying = false;
     playerShouldPlayWhenItWillBeReady = false;
     queueWasInited = false;
@@ -43,7 +42,7 @@
     // init AVQueuePlayerPrevious
     player = [[AVQueuePlayerPrevious alloc] init];
     player.allowsExternalPlayback = false;
-    player.volume = 0.1f;
+    player.actionAtItemEnd = AVPlayerActionAtItemEndPause;
     
     // init MPNowPlayingInfoCenter
     center = [MPNowPlayingInfoCenter defaultCenter];
@@ -82,8 +81,6 @@
 - (void)initQueue:(CDVInvokedUrlCommand*)command
 {
     [self reset:nil];
-    // TODO for testing period
-    //    needLoopSong = [[NSNumber alloc] initWithInt:1];
     NSDictionary *initSongDict = [command.arguments objectAtIndex:0];
     NSArray *initQueue = [initSongDict valueForKeyPath:@"queue"];
     
@@ -101,6 +98,7 @@
     }
     
     int __block initedSongs = 0;
+    __block RCPlayer *that = self;
     
     for (int i = 0; i < [initQueue count]; i++) {
         RCPlayerSong *song = [self getRCPlayerSongByInfo: initQueue[i]];
@@ -135,12 +133,8 @@
                                 }
                                 
                                 playerItem.accessibilityValue = song.code;
-                                [playerItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
-                                [playerItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
-                                
-                                if (audioAsset.URL.absoluteString == [initQueue objectAtIndex:queuePointer][@"url"]) {
-                                    [self sendDuration];
-                                }
+                                [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
+                                [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
                                 
                                 initedSongs++;
                                 
@@ -188,6 +182,8 @@
         [queue addObject:[RCPlayerSong alloc]];
     }
     
+    __block RCPlayer *that = self;
+    
     for (int i = 0; i < [songs count]; i++) {
         int indexInQueue = startIndex + i;
         int previousIndex = indexInQueue - 1;
@@ -214,8 +210,8 @@
                                 }
                                 
                                 playerItem.accessibilityValue = currentSong.code;
-                                [playerItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
-                                [playerItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
+                                [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
+                                [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
                                 
                                 NSLog(@"indexInQueue SONG WAS ADDED!!");
                             });
@@ -248,10 +244,8 @@
     for (int i = 0; i < [player.itemsForPlayer count]; i++) {
         if (i == removeByIndex) {
             AVPlayerItem *findedPlayerItem = player.itemsForPlayer[i];
-            bool lastItem = [player.itemsForPlayer count] == 1;
+            bool itIslastItem = [player.itemsForPlayer count] == 1;
             bool itIsCurrentItem = (player.currentItem.accessibilityValue == findedPlayerItem.accessibilityValue);
-            
-            [self removeObserversFromPlayerByItem:findedPlayerItem];
             
             if (itIsCurrentItem) {
                 [player pause];
@@ -262,23 +256,11 @@
                 center.nowPlayingInfo = playInfo;
             }
             
-            
-            int nextIndex = i + 1;
-            int prevIndex = i - 1;
-            
-            //            if ([player.itemsForPlayer count] > nextIndex && prevIndex != -1) {
-            //                AVPlayerItem *nextPlayerItem = player.itemsForPlayer[nextIndex];
-            //                AVPlayerItem *prevPlayerItem = player.itemsForPlayer[prevIndex];
-            //                [player insertItem:nextPlayerItem afterItem:prevPlayerItem];
-            //                NSLog(@"removeTrack was removed from middle");
-            //            }
-            
-            if (lastItem == false) {
-                //                [self removeObserversFromPlayerItems];
+            if (itIslastItem == false) {
+                [self removeObserversFromPlayerByItem:findedPlayerItem];
                 [player removeItem:findedPlayerItem];
             } else {
-                //                [self removeObserversFromPlayerItems];
-                //                [player removeItem:findedPlayerItem];
+                [self removeObserversFromPlayerItems];
                 [player removeAllItems];
                 center.nowPlayingInfo = nil;
             }
@@ -308,15 +290,25 @@
          {
              dispatch_async(dispatch_get_main_queue(), ^
                             {
-                                [queue replaceObjectAtIndex:replaceByIndex withObject:song];
-                                
+                                [queue insertObject:song atIndex:replaceByIndex];
                                 AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
-                                AVPlayerItem *needToReplaceItem = [player.itemsForPlayer objectAtIndexedSubscript:replaceByIndex];
                                 
-                                [self removeObserversFromPlayerByItem:needToReplaceItem];
-                                
-                                [player insertItem:playerItem afterItem:needToReplaceItem];
-                                [player removeItem:needToReplaceItem];
+                                if (replaceByIndex == 0) {
+                                    if ([player.itemsForPlayer count] > 0) {
+                                        AVPlayerItem *firstItem = [player.itemsForPlayer objectAtIndexedSubscript:0];
+                                        
+                                        [self removeObserversFromPlayerByItem:firstItem];
+                                        
+                                        [player insertItem:playerItem afterItem:firstItem];
+                                        [player removeItem:firstItem];
+                                        [player insertItem:firstItem afterItem:playerItem];
+                                    } else {
+                                        [player insertItem:playerItem afterItem: nil];
+                                    }
+                                } else {
+                                    AVPlayerItem *previousItem = [player.itemsForPlayer objectAtIndexedSubscript:replaceByIndex - 1];
+                                    [player insertItem:playerItem afterItem:previousItem];
+                                }
                                 
                                 playerItem.accessibilityValue = song.code;
                                 [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
@@ -439,7 +431,7 @@
     CMTime seekTime = CMTimeMakeWithSeconds(seconds, 100000);
     int audioCurrentTimeSeconds = CMTimeGetSeconds(seekTime);
     NSString *currentTime = [[NSNumber numberWithInteger:audioCurrentTimeSeconds] stringValue];
-    
+    [player seekToTime:seekTime toleranceBefore:seekTime toleranceAfter:seekTime];
     [player seekToTime:seekTime completionHandler:^(BOOL finished) {
         [self sendDataToJS:@{@"currentTime": currentTime}];
         if (playerIsPlaying) {
@@ -464,24 +456,17 @@
     [self removeObserversFromPlayerItems];
     [player removeAllItems];
     
-    //    for (int i = 0; i < [player.itemsForPlayer count]; i++) {
-    //        [player removeItem:player.itemsForPlayer[i]];
-    //    }
-    
-    needLoopSong = [NSNumber numberWithInteger:0];
     queuePointer = 0;
     queueWasInited = false;
     playerShouldPlayWhenItWillBeReady = false;
     
     [queue removeAllObjects];
     [needAddToQueueWhenItWillBeInited removeAllObjects];
-    [needRemoveFromQueueWhenItWillBeInited removeAllObjects];
     
     center.nowPlayingInfo = nil;
     
     [self sendDataToJS:@{@"currentTime": @"0"}];
     [self sendDataToJS:@{@"bufferProgress": @"0"}];
-    [self sendDataToJS:@{@"loop": needLoopSong}];
 }
 
 - (void)removeObserversFromPlayerItems
@@ -489,6 +474,14 @@
     for (int i = 0; i < [player.itemsForPlayer count]; i++) {
         @try {
             AVPlayerItem *currentItem = [player.itemsForPlayer objectAtIndexedSubscript:i];
+            [currentItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
+            [currentItem removeObserver:self forKeyPath:@"status" context:nil];
+        } @catch (id anException) {}
+    }
+    
+    for (int i = 0; i < [player.items count]; i++) {
+        @try {
+            AVPlayerItem *currentItem = [player.items objectAtIndexedSubscript:i];
             [currentItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
             [currentItem removeObserver:self forKeyPath:@"status" context:nil];
         } @catch (id anException) {}
@@ -504,7 +497,7 @@
         [playerItem removeObserver:self forKeyPath:@"status" context:nil];
         
         for (int i = 0; i < [player.items count]; i++) {
-            if (player.items[i] == playerItem) {
+            if (player.items[i].accessibilityValue == playerItem.accessibilityValue) {
                 [player.items[i] removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
                 [player.items[i] removeObserver:self forKeyPath:@"status" context:nil];
             }
@@ -679,13 +672,6 @@
 
 // these methods can be triggered from js code
 
-- (void)setLoopJS:(CDVInvokedUrlCommand*)command
-{
-    needLoopSong = [command.arguments objectAtIndex:0];
-    NSLog(@"RCPlayer setLoopJS: %@", needLoopSong);
-    //    [self sendDataToJS:@{@"loop": needLoopSong}];
-}
-
 - (void)setCurrentTimeJS:(CDVInvokedUrlCommand*)command
 {
     NSNumber *selectedTime = [command.arguments objectAtIndex:0];
@@ -721,30 +707,20 @@
 // Send duration to JS as soon as possible
 - (void)sendDuration
 {
-    CMTime audioDuration = player.currentItem.asset.duration;
-    int audioDurationSeconds = CMTimeGetSeconds(audioDuration);
-    NSString *duration = [[NSNumber numberWithInteger:audioDurationSeconds] stringValue];
-    [self sendDataToJS:@{@"duration": duration}];
+    if (player.currentItem) {
+        CMTime audioDuration = player.currentItem.asset.duration;
+        int audioDurationSeconds = CMTimeGetSeconds(audioDuration);
+        NSString *duration = [[NSNumber numberWithInteger:audioDurationSeconds] stringValue];
+        [self sendDataToJS:@{@"duration": duration}];
+    }
 }
 
 #pragma mark - AVPlayer events listeners
 
-// TODO check this method
 -(void)itemDidFinishPlaying:(NSNotification *) notification {
-    [player pause];
-    NSLog(@"RCPlayer song has stopped, is loop %@", needLoopSong);
-    // If need loop current song
-    if ([needLoopSong isEqualToNumber:[NSNumber numberWithInt:1]]) {
-        [self setCurrentTimeForPlayer:0];
-        [self playAtIndex:queuePointer];
-    } else {
-        [self sendDataToJS:@{@"currentTime": @"0"}];
-        [self sendRemoteControlEvent:@"nextTrack"];
-        if (queuePointer < ([queue count] - 1)) {
-            queuePointer = queuePointer + 1;
-            [self playAtIndex:queuePointer];
-        }
-    }
+    [self pauseTrack:nil];
+    [self setCurrentTimeForPlayer:0];
+    [self sendDataToJS:@{@"itemDidFinish": @"true"}];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
@@ -755,15 +731,25 @@
         AVPlayerItem *item = (AVPlayerItem *)object;
         if ([item.accessibilityValue containsString:shouldPlayWhenPlayerWillBeReady]) {
             NSLog(@"observeValueForKeyPath AVPlayerItemStatusReadyToPlay");
-            if ([player.currentItem.accessibilityValue containsString:shouldPlayWhenPlayerWillBeReady]) {
-                [player play];
-            } else {
-                [self play:shouldPlayWhenPlayerWillBeReady];
+            if (player.currentItem && shouldPlayWhenPlayerWillBeReady) {
+                if ([player.currentItem.accessibilityValue containsString:shouldPlayWhenPlayerWillBeReady]) {
+                    [player play];
+                } else {
+                    [self play:shouldPlayWhenPlayerWillBeReady];
+                }
             }
         }
         NSLog(@"observeValueForKeyPath item code: %@", item.accessibilityValue);
     }
     
+    if ([keyPath isEqualToString:@"status"]) {
+        AVPlayerItem *item = (AVPlayerItem *)object;
+        AVPlayerItem *currentItem = player.currentItem;
+        
+        if ((item == currentItem) && (item.status == AVPlayerItemStatusReadyToPlay)) {
+            [self sendDuration];
+        }
+    }
     
     // Progress of buffering audio
     if(object == player.currentItem && [keyPath isEqualToString:@"loadedTimeRanges"]) {

@@ -19,9 +19,6 @@ module.exports = {
   pauseTrack: function(params, successCallback, errorCallback) {
     cordova.exec(successCallback, errorCallback, 'RCPlayer', 'pauseTrack', [params]);
   },
-  setLoop: function(flag) {
-    cordova.exec(function() {}, function() {}, 'RCPlayer', 'setLoopJS', [flag]);
-  },
   setCurrentTime: function(seconds) {
     cordova.exec(function() {}, function() {}, 'RCPlayer', 'setCurrentTimeJS', [seconds]);
   },
