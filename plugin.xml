@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
         id="cordova-rc-audio-player"
-        version="0.0.1">
+        version="0.0.2">
 
     <name>RCPlayer</name>
     <description>RCPlayer Plugin</description>
     <license>Apache 2.0</license>
     <keywords>RCPlayer</keywords>
-    <repo>https://github.com/WinGood/cordova-audio-player.git</repo>
-    <issue>https://github.com/WinGood/cordova-audio-player/issues</issue>
+    <repo>https://github.com/WinGood/rc-audio-player</repo>
+    <issue>https://github.com/WinGood/rc-audio-player/issues</issue>
 
     <platform name="ios">
         <js-module src="www/RCPlayer.js" name="RCPlayer">

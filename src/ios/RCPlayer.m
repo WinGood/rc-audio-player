@@ -28,9 +28,6 @@
     [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
     [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
     
-    // Listener for event that fired when song has stopped playing
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:player.currentItem];
-    
     // init variables
     queue = [[NSMutableArray alloc] init];
     needAddToQueueWhenItWillBeInited = [[NSMutableArray alloc] init];
@@ -43,6 +40,11 @@
     player = [[AVQueuePlayerPrevious alloc] init];
     player.allowsExternalPlayback = false;
     player.actionAtItemEnd = AVPlayerActionAtItemEndPause;
+    
+    [player addObserver:self forKeyPath:@"actionAtItemEnd" options:NSKeyValueObservingOptionInitial context:nil];
+    
+    // Listener for event that fired when song has stopped playing
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:player.currentItem];
     
     // init MPNowPlayingInfoCenter
     center = [MPNowPlayingInfoCenter defaultCenter];
@@ -215,7 +217,6 @@
                                 
                                 NSLog(@"indexInQueue SONG WAS ADDED!!");
                             });
-             
          }];
     }
     
@@ -314,7 +315,6 @@
                                 [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
                                 [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
                             });
-             
          }];
     }
 }
@@ -574,6 +574,9 @@
     if (queuePointer < ([queue count] - 1)) {
         queuePointer = queuePointer + 1;
         [self playAtIndex:queuePointer];
+    } else if (queuePointer == [queue count] - 1) {
+        queuePointer = 0;
+        [self playAtIndex:queuePointer];
     }
     
     NSLog(@"RCPlayer current index: %d", queuePointer);
@@ -581,9 +584,14 @@
 }
 
 - (void)onPreviousTrack:(MPRemoteCommandHandlerStatus*)event {
-    if (queuePointer != 0) {
-        queuePointer = queuePointer - 1;
-        [self playAtIndex:queuePointer];
+    if ([queue count] > 0) {
+        if (queuePointer == 0) {
+            queuePointer = [queue count] - 1;
+            [self playAtIndex:queuePointer];
+        } else {
+            queuePointer = queuePointer - 1;
+            [self playAtIndex:queuePointer];
+        }
     }
     
     NSLog(@"RCPlayer current index: %d", queuePointer);
@@ -717,7 +725,8 @@
 
 #pragma mark - AVPlayer events listeners
 
--(void)itemDidFinishPlaying:(NSNotification *) notification {
+// TODO not working for iOS 11, in background
+-(void)itemDidFinishPlaying:(NSNotification *)notification {
     [self pauseTrack:nil];
     [self setCurrentTimeForPlayer:0];
     [self sendDataToJS:@{@"itemDidFinish": @"true"}];
@@ -734,6 +743,7 @@
             if (player.currentItem && shouldPlayWhenPlayerWillBeReady) {
                 if ([player.currentItem.accessibilityValue containsString:shouldPlayWhenPlayerWillBeReady]) {
                     [player play];
+                    [self updateMusicControls];
                 } else {
                     [self play:shouldPlayWhenPlayerWillBeReady];
                 }
