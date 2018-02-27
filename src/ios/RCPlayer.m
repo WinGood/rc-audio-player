@@ -40,6 +40,7 @@
     player = [[AVQueuePlayerPrevious alloc] init];
     player.allowsExternalPlayback = false;
     player.actionAtItemEnd = AVPlayerActionAtItemEndPause;
+    player.volume = 0.1f;
     
     [player addObserver:self forKeyPath:@"actionAtItemEnd" options:NSKeyValueObservingOptionInitial context:nil];
     
@@ -571,16 +572,23 @@
 }
 
 - (void)onNextTrack:(MPRemoteCommandHandlerStatus*)event {
-    if (queuePointer < ([queue count] - 1)) {
-        queuePointer = queuePointer + 1;
-        [self playAtIndex:queuePointer];
-    } else if (queuePointer == [queue count] - 1) {
-        queuePointer = 0;
-        [self playAtIndex:queuePointer];
+    // if random
+    // - random
+    // - else
+    if (false) {
+        // random
+    } else {
+        if (queuePointer < ([queue count] - 1)) {
+            queuePointer = queuePointer + 1;
+            [self playAtIndex:queuePointer];
+        } else if (queuePointer == [queue count] - 1) {
+            queuePointer = 0;
+            [self playAtIndex:queuePointer];
+        }
     }
     
     NSLog(@"RCPlayer current index: %d", queuePointer);
-    [self sendRemoteControlEvent:@"nextTrack"];
+    [self sendRemoteControlEventWithQueuePointer:@"nextTrack"];
 }
 
 - (void)onPreviousTrack:(MPRemoteCommandHandlerStatus*)event {
@@ -595,7 +603,7 @@
     }
     
     NSLog(@"RCPlayer current index: %d", queuePointer);
-    [self sendRemoteControlEvent:@"previousTrack"];
+    [self sendRemoteControlEventWithQueuePointer:@"previousTrack"];
 }
 
 # pragma mark - MPNowPlayingInfoCenter
@@ -680,6 +688,14 @@
 
 // these methods can be triggered from js code
 
+- (void)setShuffling:(CDVInvokedUrlCommand*)command
+{
+    NSNumber *value = [command.arguments objectAtIndex:0];
+    if ([value isKindOfClass:[NSNull class]]) return;
+    shuffling = [value intValue];
+    NSLog(@"shuffling - %d", shuffling);
+}
+
 - (void)setCurrentTimeJS:(CDVInvokedUrlCommand*)command
 {
     NSNumber *selectedTime = [command.arguments objectAtIndex:0];
@@ -691,7 +707,7 @@
 
 // Get id for JS callback
 // TODO check this method, I can't find mentions
-- (void) setWatcherFromJS: (CDVInvokedUrlCommand*) command {
+- (void)setWatcherFromJS: (CDVInvokedUrlCommand*) command {
     subscribeCallbackID = command.callbackId;
 }
 
@@ -700,6 +716,12 @@
     NSLog(@"RCPlayer: Remote control event, %@", event);
     // Send event in JS env
     [self sendDataToJS:@{@"event": event}];
+}
+
+- (void)sendRemoteControlEventWithQueuePointer:(NSString*)event
+{
+    NSString *pointer = [[NSNumber numberWithInteger:queuePointer] stringValue];
+    [self sendDataToJS:@{@"event": @{event: pointer}}];
 }
 
 // Send any data back to JS env through subscribe callback

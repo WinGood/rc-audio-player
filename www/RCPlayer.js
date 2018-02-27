@@ -20,6 +20,11 @@ module.exports = {
       index
     ]);
   },
+  setShuffling: function(value) {
+    cordova.exec(function() {}, function() {}, 'RCPlayer', 'setShuffling', [
+      value
+    ]);
+  },
   playTrack: function(params) {
     cordova.exec(function() {}, function() {}, 'RCPlayer', 'playTrack', [
       params

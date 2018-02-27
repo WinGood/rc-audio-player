@@ -15,6 +15,7 @@
     NSMutableArray<RCPlayerSong *> *needAddToQueueWhenItWillBeInited;
     AVPlayer *currentTimeObserver;
     NSString *shouldPlayWhenPlayerWillBeReady;
+    int shuffling;
     bool queueWasInited;
     bool playerShouldPlayWhenItWillBeReady;
     bool playerIsPlaying;
@@ -28,6 +29,7 @@
 - (void) replaceTrack:(CDVInvokedUrlCommand*)command; // DONE
 - (void) removeTrack:(CDVInvokedUrlCommand*)command; //
 - (void) playTrack:(CDVInvokedUrlCommand*)command; // DONE
+- (void) setShuffling:(CDVInvokedUrlCommand*)command; // DONE
 - (void) pauseTrack:(CDVInvokedUrlCommand*)command; // DONE
 - (void) reset:(CDVInvokedUrlCommand*)command; // DONE
 - (void) setCurrentTimeJS:(CDVInvokedUrlCommand*)command; // DONE
