@@ -571,12 +571,24 @@
     [self sendRemoteControlEvent:@"pause"];
 }
 
+- (int)randomNumberBetween:(int)min maxNumber:(int)max
+{
+    return min + arc4random_uniform((uint32_t)(max - min + 1));
+}
+
 - (void)onNextTrack:(MPRemoteCommandHandlerStatus*)event {
-    // if random
-    // - random
-    // - else
-    if (false) {
-        // random
+    if (shuffling == 1) {
+        if ([queue count] == 1) {
+            queuePointer = 0;
+            [self playAtIndex:queuePointer];
+        } else {
+            int newIndex = queuePointer;
+            while(queuePointer == newIndex) {
+                newIndex = [self randomNumberBetween:0 maxNumber:[queue count] - 1];
+            }
+            queuePointer = newIndex;
+            [self playAtIndex:queuePointer];
+        }
     } else {
         if (queuePointer < ([queue count] - 1)) {
             queuePointer = queuePointer + 1;
