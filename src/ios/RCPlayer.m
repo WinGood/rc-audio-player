@@ -92,9 +92,9 @@
         [queue addObject:[RCPlayerSong alloc]];
     }
     
-    if ([initQueue count] == 0) {
+    if ([queue count] == 0) {
         queueWasInited = true;
-        if ([needAddToQueueWhenItWillBeInited count]) {
+        if ([needAddToQueueWhenItWillBeInited count] > 0) {
             [self addSongsInQueue:needAddToQueueWhenItWillBeInited];
         }
         return;
@@ -103,49 +103,51 @@
     int __block initedSongs = 0;
     __block RCPlayer *that = self;
     
-    for (int i = 0; i < [initQueue count]; i++) {
+    for (int i = 0; i < [queue count]; i++) {
         RCPlayerSong *song = [self getRCPlayerSongByInfo: initQueue[i]];
         AVURLAsset *audioAsset = [self getAudioAssetForSong:song];
         
-        [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
+        [audioAsset loadValuesAsynchronouslyForKeys:@[@"duration"] completionHandler:^()
          {
              dispatch_async(dispatch_get_main_queue(), ^
                             {
-                                // add information about song in the queue
-                                [queue replaceObjectAtIndex:i withObject:song];
-                                
-                                AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
-                                NSInteger previousIndex = i - 1;
-                                
-                                if (previousIndex != -1) {
-                                    if ([player.itemsForPlayer count] > previousIndex) {
-                                        AVPlayerItem *previousItem = [player.items objectAtIndex:previousIndex];
-                                        [player insertItem:playerItem afterItem: previousItem];
+                                if ([queue count] > i) {
+                                    // add information about song in the queue
+                                    [queue replaceObjectAtIndex:i withObject:song];
+                                    
+                                    AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
+                                    NSInteger previousIndex = i - 1;
+                                    
+                                    if (previousIndex != -1) {
+                                        if ([player.itemsForPlayer count] > previousIndex) {
+                                            AVPlayerItem *previousItem = [player.itemsForPlayer objectAtIndexedSubscript:previousIndex];
+                                            [player insertItem:playerItem afterItem: previousItem];
+                                        } else {
+                                            [player insertItem:playerItem afterItem: nil];
+                                        }
                                     } else {
-                                        [player insertItem:playerItem afterItem: nil];
+                                        if ([player.itemsForPlayer count] > 0) {
+                                            AVPlayerItem *firstItem = [player.itemsForPlayer objectAtIndexedSubscript:0];
+                                            [player insertItem:playerItem afterItem:firstItem];
+                                            [player removeItem:firstItem];
+                                            [player insertItem:firstItem afterItem:playerItem];
+                                        } else {
+                                            [player insertItem:playerItem afterItem: nil];
+                                        }
                                     }
-                                } else {
-                                    if ([player.itemsForPlayer count] > 0) {
-                                        AVPlayerItem *firstItem = [player.itemsForPlayer objectAtIndexedSubscript:0];
-                                        [player insertItem:playerItem afterItem:firstItem];
-                                        [player removeItem:firstItem];
-                                        [player insertItem:firstItem afterItem:playerItem];
-                                    } else {
-                                        [player insertItem:playerItem afterItem: nil];
-                                    }
-                                }
-                                
-                                playerItem.accessibilityValue = song.code;
-                                [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
-                                [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
-                                
-                                initedSongs++;
-                                
-                                if (initedSongs == [initQueue count]) {
-                                    NSLog(@"queueWasInited true");
-                                    queueWasInited = true;
-                                    if ([needAddToQueueWhenItWillBeInited count]) {
-                                        [self addSongsInQueue:needAddToQueueWhenItWillBeInited];
+                                    
+                                    playerItem.accessibilityValue = song.code;
+                                    [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
+                                    [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
+                                    
+                                    initedSongs++;
+                                    
+                                    if (initedSongs == [initQueue count]) {
+                                        NSLog(@"queueWasInited true");
+                                        queueWasInited = true;
+                                        if ([needAddToQueueWhenItWillBeInited count] > 0) {
+                                            [self addSongsInQueue:needAddToQueueWhenItWillBeInited];
+                                        }
                                     }
                                 }
                             });
@@ -197,7 +199,7 @@
         NSLog(@"indexInQueue: %d", indexInQueue);
         NSLog(@"indexInQueue currentSong url: %@", currentSong.url);
         
-        [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
+        [audioAsset loadValuesAsynchronouslyForKeys:@[@"duration"] completionHandler:^()
          {
              dispatch_async(dispatch_get_main_queue(), ^
                             {
@@ -288,7 +290,7 @@
         [self addSongsInQueue:needToAdd];
     } else if ([queue count] > replaceByIndex && [player.itemsForPlayer count] > replaceByIndex) {
         AVURLAsset *audioAsset = [self getAudioAssetForSong:song];
-        [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
+        [audioAsset loadValuesAsynchronouslyForKeys:@[@"duration"] completionHandler:^()
          {
              dispatch_async(dispatch_get_main_queue(), ^
                             {
@@ -841,4 +843,3 @@
 }
 
 @end
-
