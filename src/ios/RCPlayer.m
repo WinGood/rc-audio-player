@@ -107,7 +107,7 @@
         RCPlayerSong *song = [self getRCPlayerSongByInfo: initQueue[i]];
         AVURLAsset *audioAsset = [self getAudioAssetForSong:song];
         
-        [audioAsset loadValuesAsynchronouslyForKeys:@[@"duration"] completionHandler:^()
+        [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
          {
              dispatch_async(dispatch_get_main_queue(), ^
                             {
@@ -199,7 +199,7 @@
         NSLog(@"indexInQueue: %d", indexInQueue);
         NSLog(@"indexInQueue currentSong url: %@", currentSong.url);
         
-        [audioAsset loadValuesAsynchronouslyForKeys:@[@"duration"] completionHandler:^()
+        [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
          {
              dispatch_async(dispatch_get_main_queue(), ^
                             {
@@ -290,7 +290,7 @@
         [self addSongsInQueue:needToAdd];
     } else if ([queue count] > replaceByIndex && [player.itemsForPlayer count] > replaceByIndex) {
         AVURLAsset *audioAsset = [self getAudioAssetForSong:song];
-        [audioAsset loadValuesAsynchronouslyForKeys:@[@"duration"] completionHandler:^()
+        [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
          {
              dispatch_async(dispatch_get_main_queue(), ^
                             {
@@ -843,3 +843,4 @@
 }
 
 @end
+
