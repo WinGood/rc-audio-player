@@ -15,18 +15,29 @@
         NSLog(@"RCPlayer setCategoryError: %s%@", __PRETTY_FUNCTION__, setCategoryError);
     }
     
+    [audioSession setMode:AVAudioSessionModeDefault error:nil];
+    [audioSession setActive:YES error:nil];
+    
     [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
-    NSNumber *shouldScrub = [NSNumber numberWithBool:YES];
-    [[[MPRemoteCommandCenter sharedCommandCenter] changePlaybackPositionCommand]
-     performSelector:@selector(setCanBeControlledByScrubbing:) withObject:shouldScrub];
+//    NSNumber *shouldScrub = [NSNumber numberWithBool:YES];
+//    [[[MPRemoteCommandCenter sharedCommandCenter] changePlaybackPositionCommand]
+//     performSelector:@selector(setCanBeControlledByScrubbing:) withObject:shouldScrub];
+    
+    // Set controls
+    [commandCenter.seekBackwardCommand setEnabled:YES];
+    [commandCenter.previousTrackCommand setEnabled:YES];
+    [commandCenter.nextTrackCommand setEnabled:YES];
+    [commandCenter.skipBackwardCommand setEnabled:YES];
+    [commandCenter.skipForwardCommand setEnabled:YES];
     
     // Listeners for events from NowPlaying widget
-    [commandCenter.changePlaybackPositionCommand addTarget:self action:@selector(onChangePlayback:)];
+//    [commandCenter.changePlaybackPositionCommand addTarget:self action:@selector(onChangePlayback:)];
     [commandCenter.playCommand addTarget:self action:@selector(onPlay:)];
     [commandCenter.pauseCommand addTarget:self action:@selector(onPause:)];
     [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
     [commandCenter.previousTrackCommand addTarget:self action:@selector(onPreviousTrack:)];
+    [commandCenter.changePlaybackPositionCommand addTarget:self action:@selector(onChangePlayback:)];
     
     // init variables
     queue = [[NSMutableArray alloc] init];
@@ -49,6 +60,7 @@
     
     // init MPNowPlayingInfoCenter
     center = [MPNowPlayingInfoCenter defaultCenter];
+    remoteCenter = commandCenter;
     
     if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"10.0")) {
         player.automaticallyWaitsToMinimizeStalling = false;
@@ -92,18 +104,17 @@
         [queue addObject:[RCPlayerSong alloc]];
     }
     
-    if ([queue count] == 0) {
+    if ([initQueue count] == 0) {
         queueWasInited = true;
-        if ([needAddToQueueWhenItWillBeInited count] > 0) {
+        if ([needAddToQueueWhenItWillBeInited count]) {
             [self addSongsInQueue:needAddToQueueWhenItWillBeInited];
         }
         return;
     }
-    
     int __block initedSongs = 0;
     __block RCPlayer *that = self;
     
-    for (int i = 0; i < [queue count]; i++) {
+    for (int i = 0; i < [initQueue count]; i++) {
         RCPlayerSong *song = [self getRCPlayerSongByInfo: initQueue[i]];
         AVURLAsset *audioAsset = [self getAudioAssetForSong:song];
         
@@ -111,43 +122,41 @@
          {
              dispatch_async(dispatch_get_main_queue(), ^
                             {
-                                if ([queue count] > i) {
-                                    // add information about song in the queue
-                                    [queue replaceObjectAtIndex:i withObject:song];
-                                    
-                                    AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
-                                    NSInteger previousIndex = i - 1;
-                                    
-                                    if (previousIndex != -1) {
-                                        if ([player.itemsForPlayer count] > previousIndex) {
-                                            AVPlayerItem *previousItem = [player.itemsForPlayer objectAtIndexedSubscript:previousIndex];
-                                            [player insertItem:playerItem afterItem: previousItem];
-                                        } else {
-                                            [player insertItem:playerItem afterItem: nil];
-                                        }
+                                // add information about song in the queue
+                                [queue replaceObjectAtIndex:i withObject:song];
+                                
+                                AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
+                                NSInteger previousIndex = i - 1;
+                                
+                                if (previousIndex != -1) {
+                                    if ([player.itemsForPlayer count] > previousIndex) {
+                                        AVPlayerItem *previousItem = [player.items objectAtIndex:previousIndex];
+                                        [player insertItem:playerItem afterItem: previousItem];
                                     } else {
-                                        if ([player.itemsForPlayer count] > 0) {
-                                            AVPlayerItem *firstItem = [player.itemsForPlayer objectAtIndexedSubscript:0];
-                                            [player insertItem:playerItem afterItem:firstItem];
-                                            [player removeItem:firstItem];
-                                            [player insertItem:firstItem afterItem:playerItem];
-                                        } else {
-                                            [player insertItem:playerItem afterItem: nil];
-                                        }
+                                        [player insertItem:playerItem afterItem: nil];
                                     }
-                                    
-                                    playerItem.accessibilityValue = song.code;
-                                    [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
-                                    [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
-                                    
-                                    initedSongs++;
-                                    
-                                    if (initedSongs == [initQueue count]) {
-                                        NSLog(@"queueWasInited true");
-                                        queueWasInited = true;
-                                        if ([needAddToQueueWhenItWillBeInited count] > 0) {
-                                            [self addSongsInQueue:needAddToQueueWhenItWillBeInited];
-                                        }
+                                } else {
+                                    if ([player.itemsForPlayer count] > 0) {
+                                        AVPlayerItem *firstItem = [player.itemsForPlayer objectAtIndexedSubscript:0];
+                                        [player insertItem:playerItem afterItem:firstItem];
+                                        [player removeItem:firstItem];
+                                        [player insertItem:firstItem afterItem:playerItem];
+                                    } else {
+                                        [player insertItem:playerItem afterItem: nil];
+                                    }
+                                }
+                                
+                                playerItem.accessibilityValue = song.code;
+                                [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
+                                [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
+                                
+                                initedSongs++;
+                                
+                                if (initedSongs == [initQueue count]) {
+                                    NSLog(@"queueWasInited true");
+                                    queueWasInited = true;
+                                    if ([needAddToQueueWhenItWillBeInited count]) {
+                                        [self addSongsInQueue:needAddToQueueWhenItWillBeInited];
                                     }
                                 }
                             });
@@ -257,7 +266,7 @@
                 [player.currentItem.asset cancelLoading];
                 NSMutableDictionary *playInfo = [NSMutableDictionary dictionaryWithDictionary:[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo];
                 [playInfo setObject:[NSNumber numberWithFloat:0.0f] forKey:MPNowPlayingInfoPropertyPlaybackRate];
-                center.nowPlayingInfo = playInfo;
+                MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo = playInfo;
             }
             
             if (itIslastItem == false) {
@@ -266,7 +275,7 @@
             } else {
                 [self removeObserversFromPlayerItems];
                 [player removeAllItems];
-                center.nowPlayingInfo = nil;
+                MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo = nil;
             }
             
             NSLog(@"removeTrack was removed from player");
@@ -683,7 +692,7 @@
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (NSClassFromString(@"MPNowPlayingInfoCenter")) {
                     MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc] initWithImage: image];
-                    center.nowPlayingInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+                    MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo = [NSDictionary dictionaryWithObjectsAndKeys:
                                              artist, MPMediaItemPropertyArtist,
                                              title, MPMediaItemPropertyTitle,
                                              album, MPMediaItemPropertyAlbumTitle,
@@ -843,4 +852,3 @@
 }
 
 @end
-
