@@ -60,7 +60,6 @@
     
     // init MPNowPlayingInfoCenter
     center = [MPNowPlayingInfoCenter defaultCenter];
-    remoteCenter = commandCenter;
     
     if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"10.0")) {
         player.automaticallyWaitsToMinimizeStalling = false;
