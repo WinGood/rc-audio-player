@@ -32,7 +32,6 @@
     [commandCenter.skipForwardCommand setEnabled:YES];
     
     // Listeners for events from NowPlaying widget
-//    [commandCenter.changePlaybackPositionCommand addTarget:self action:@selector(onChangePlayback:)];
     [commandCenter.playCommand addTarget:self action:@selector(onPlay:)];
     [commandCenter.pauseCommand addTarget:self action:@selector(onPause:)];
     [commandCenter.nextTrackCommand addTarget:self action:@selector(onNextTrack:)];
@@ -51,7 +50,7 @@
     player = [[AVQueuePlayerPrevious alloc] init];
     player.allowsExternalPlayback = false;
     player.actionAtItemEnd = AVPlayerActionAtItemEndPause;
-    player.volume = 0.1f;
+//    player.volume = 0.1f;
     
     [player addObserver:self forKeyPath:@"actionAtItemEnd" options:NSKeyValueObservingOptionInitial context:nil];
     
@@ -340,6 +339,10 @@
 - (void)play:(NSString*)shouldPlayCode
 {
     NSLog(@"RCPlayer current queue: %@", queue);
+    
+    if (playerIsPlaying) {
+        [player pause];
+    }
     
     int findedIndex = [self getSongIndexInQueueByCode:shouldPlayCode];
     NSLog(@"RCPlayer findedIndex: %d", findedIndex);
