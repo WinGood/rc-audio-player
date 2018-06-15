@@ -53,8 +53,10 @@
 
     [player addObserver:self forKeyPath:@"actionAtItemEnd" options:NSKeyValueObservingOptionInitial context:nil];
 
-    // Listener for event that fired when song has stopped playing
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:player.currentItem];
+    // Listener for event that fired when song has stopped playin
+    [[NSNotificationCenter defaultCenter] addObserverForName:AVPlayerItemDidPlayToEndTimeNotification object:player.currentItem queue:NULL usingBlock:^(NSNotification * _Nonnull note) {
+        [self itemDidFinishPlaying:note];
+    }];
 
     // init MPNowPlayingInfoCenter
     center = [MPNowPlayingInfoCenter defaultCenter];
