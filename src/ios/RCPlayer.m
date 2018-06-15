@@ -12,7 +12,7 @@
     NSError *setCategoryError = nil;
     ok = [audioSession setCategory:AVAudioSessionCategoryPlayback error:&setCategoryError];
     if (!ok) {
-//        NSLog(@"RCPlayer setCategoryError: %s%@", __PRETTY_FUNCTION__, setCategoryError);
+        //        NSLog(@"RCPlayer setCategoryError: %s%@", __PRETTY_FUNCTION__, setCategoryError);
     }
 
     [audioSession setMode:AVAudioSessionModeDefault error:nil];
@@ -20,9 +20,9 @@
 
     [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
-//    NSNumber *shouldScrub = [NSNumber numberWithBool:YES];
-//    [[[MPRemoteCommandCenter sharedCommandCenter] changePlaybackPositionCommand]
-//     performSelector:@selector(setCanBeControlledByScrubbing:) withObject:shouldScrub];
+    //    NSNumber *shouldScrub = [NSNumber numberWithBool:YES];
+    //    [[[MPRemoteCommandCenter sharedCommandCenter] changePlaybackPositionCommand]
+    //     performSelector:@selector(setCanBeControlledByScrubbing:) withObject:shouldScrub];
 
     // Set controls
     [commandCenter.seekBackwardCommand setEnabled:YES];
@@ -84,7 +84,7 @@
             [that sendDataToJS:@{@"currentTime": elapsed}];
         }
 
-//        NSLog(@"RCPlayer: was update current time of song %@", elapsed);
+        //        NSLog(@"RCPlayer: was update current time of song %@", elapsed);
     }];
 }
 
@@ -150,14 +150,13 @@
                                 initedSongs++;
 
                                 if (initedSongs == [initQueue count]) {
-//                                    NSLog(@"queueWasInited true");
+                                    //                                    NSLog(@"queueWasInited true");
                                     queueWasInited = true;
                                     if ([needAddToQueueWhenItWillBeInited count]) {
                                         [self addSongsInQueue:needAddToQueueWhenItWillBeInited];
                                     }
                                 }
                             });
-
          }];
     }
 }
@@ -172,24 +171,24 @@
         [needAddToQueueWhenItWillBeInited addObject:song];
     }
 
-//    NSLog(@"indexInQueue indexInQueue - add");
+    //    NSLog(@"indexInQueue indexInQueue - add");
 
     if (queueWasInited == true) {
-//        NSLog(@"indexInQueue indexInQueue - true");
+        //        NSLog(@"indexInQueue indexInQueue - true");
         [self addSongsInQueue:needAddToQueueWhenItWillBeInited];
     } else {
-//        NSLog(@"indexInQueue indexInQueue - false");
+        //        NSLog(@"indexInQueue indexInQueue - false");
     }
 }
 
 - (void)addSongsInQueue:(NSMutableArray<RCPlayerSong *>*)songs
 {
     int startIndex = (int)[queue count];
-//    NSLog(@"indexInQueue songs: %lu", [songs count]);
-//    NSLog(@"indexInQueue startIndex: %d", startIndex);
+    //    NSLog(@"indexInQueue songs: %lu", [songs count]);
+    //    NSLog(@"indexInQueue startIndex: %d", startIndex);
 
     for (NSUInteger i = [queue count]; i < startIndex + [songs count]; i++) {
-//        NSLog(@"indexInQueue new item added");
+        //        NSLog(@"indexInQueue new item added");
         [queue addObject:[RCPlayerSong alloc]];
     }
 
@@ -202,8 +201,8 @@
         RCPlayerSong *currentSong = songs[i];
         AVURLAsset *audioAsset = [self getAudioAssetForSong:currentSong];
 
-//        NSLog(@"indexInQueue: %d", indexInQueue);
-//        NSLog(@"indexInQueue currentSong url: %@", currentSong.url);
+        //        NSLog(@"indexInQueue: %d", indexInQueue);
+        //        NSLog(@"indexInQueue currentSong url: %@", currentSong.url);
 
         [audioAsset loadValuesAsynchronouslyForKeys:@[@"playable"] completionHandler:^()
          {
@@ -224,7 +223,7 @@
                                 [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
                                 [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
 
-//                                NSLog(@"indexInQueue SONG WAS ADDED!!");
+                                //                                NSLog(@"indexInQueue SONG WAS ADDED!!");
                             });
          }];
     }
@@ -237,19 +236,19 @@
     NSNumber *index = [command.arguments objectAtIndex:0];
     int removeByIndex = [index intValue];
 
-//    NSLog(@"removeTrack queue before count %lu", (unsigned long)[queue count]);
+    //    NSLog(@"removeTrack queue before count %lu", (unsigned long)[queue count]);
 
     for (int i = 0; i < [queue count]; i++) {
         if (i == removeByIndex) {
             [queue removeObjectAtIndex:i];
-//            NSLog(@"removeTrack was removed from queue");
+            //            NSLog(@"removeTrack was removed from queue");
         }
     }
 
-//    NSLog(@"removeTrack queue after count %lu", (unsigned long)[queue count]);
-//    NSLog(@"removeTrack removeByIndex %lu", (unsigned long)removeByIndex);
-//    NSLog(@"removeTrack count %lu", (unsigned long)[player.items count]);
-//    NSLog(@"removeTrack itemsForPlayer %lu", (unsigned long)[player.itemsForPlayer count]);
+    //    NSLog(@"removeTrack queue after count %lu", (unsigned long)[queue count]);
+    //    NSLog(@"removeTrack removeByIndex %lu", (unsigned long)removeByIndex);
+    //    NSLog(@"removeTrack count %lu", (unsigned long)[player.items count]);
+    //    NSLog(@"removeTrack itemsForPlayer %lu", (unsigned long)[player.itemsForPlayer count]);
 
     for (int i = 0; i < [player.itemsForPlayer count]; i++) {
         if (i == removeByIndex) {
@@ -275,14 +274,14 @@
                 MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo = nil;
             }
 
-//            NSLog(@"removeTrack was removed from player");
+            //            NSLog(@"removeTrack was removed from player");
         }
     }
 }
 
 - (void)replaceTrack:(CDVInvokedUrlCommand*)command
 {
-//    NSLog(@"replaceTrack arguments - %@", command.arguments);
+    //    NSLog(@"replaceTrack arguments - %@", command.arguments);
     NSNumber *index = [command.arguments objectAtIndex:0];
     NSDictionary *songInfo = [command.arguments objectAtIndex:1];
     RCPlayerSong *song = [self getRCPlayerSongByInfo:songInfo];
@@ -331,24 +330,28 @@
 - (void)playTrack:(CDVInvokedUrlCommand*)command
 {
     NSString *shouldPlayCode = [command.arguments objectAtIndex:0];
-    if ([queue count] == 0) return;
+    if ([queue count] == 0 || queueWasInited == false) {
+        playerShouldPlayWhenItWillBeReady = true;
+        shouldPlayWhenPlayerWillBeReady = shouldPlayCode;
+        return;
+    }
     [self play:shouldPlayCode];
 }
 
 - (void)play:(NSString*)shouldPlayCode
 {
-//    NSLog(@"RCPlayer current queue: %@", queue);
+    //    NSLog(@"RCPlayer current queue: %@", queue);
 
     if (playerIsPlaying) {
         [player pause];
     }
 
     int findedIndex = [self getSongIndexInQueueByCode:shouldPlayCode];
-//    NSLog(@"RCPlayer findedIndex: %d", findedIndex);
+    //    NSLog(@"RCPlayer findedIndex: %d", findedIndex);
 
     if (findedIndex != -1) {
-//        NSLog(@"RCPlayer playTrack: %@", queue);
-//        NSLog(@"RCPlayer playTrack index: %d", queuePointer);
+        //        NSLog(@"RCPlayer playTrack: %@", queue);
+        //        NSLog(@"RCPlayer playTrack index: %d", queuePointer);
 
         queuePointer = findedIndex;
         [self playAtIndex:queuePointer];
@@ -403,7 +406,7 @@
     int index = -1;
     for (int i = 0; i < [queue count]; i++) {
         if (queue[i].code != nil && queue[i].code != NULL) {
-            if ([queue[i].code containsString:code]) {
+            if ([queue[i].code isEqualToString:code]) {
                 index = i;
             }
         }
@@ -425,10 +428,10 @@
 
             [self sendDataToJS:@{@"bufferProgress": percentString}];
 
-//            NSLog(@"RCPlayer song buffering progress %@", percentString);
+            //            NSLog(@"RCPlayer song buffering progress %@", percentString);
 
             if (percent >= 100) {
-//                NSLog(@"RCPlayer: loadedTimeRanges remove listener");
+                //                NSLog(@"RCPlayer: loadedTimeRanges remove listener");
                 @try {
                     [player.currentItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
                 } @catch (id anException) {}
@@ -460,7 +463,7 @@
 
 - (void)reset:(CDVInvokedUrlCommand*)command
 {
-//    NSLog(@"RCPlayer reset");
+    //    NSLog(@"RCPlayer reset");
 
     [player pause];
     [player.currentItem cancelPendingSeeks];
@@ -549,7 +552,7 @@
 }
 
 - (MPRemoteCommandHandlerStatus)onChangePlayback:(MPChangePlaybackPositionCommandEvent*)event {
-//    NSLog(@"RCPlayer: changedPlaybackPosition to %f", event.positionTime);
+    //    NSLog(@"RCPlayer: changedPlaybackPosition to %f", event.positionTime);
 
     // Songs are loading async, rewind will work only for current song
     CMTime seekTime = CMTimeMakeWithSeconds(event.positionTime, 100000);
@@ -572,7 +575,7 @@
     playerIsPlaying = true;
 
     [self updateMusicControls];
-    [self sendRemoteControlEvent:@"play"];
+    [self sendRemoteControlEventWithQueuePointer:@"play"];
 }
 
 - (void)onPause:(MPRemoteCommandHandlerStatus*)event {
@@ -580,7 +583,7 @@
     playerIsPlaying = false;
 
     [self updateMusicControls];
-    [self sendRemoteControlEvent:@"pause"];
+    [self sendRemoteControlEventWithQueuePointer:@"pause"];
 }
 
 - (int)randomNumberBetween:(int)min maxNumber:(int)max
@@ -612,7 +615,7 @@
         }
     }
 
-//    NSLog(@"RCPlayer current index: %d", queuePointer);
+    //    NSLog(@"RCPlayer current index: %d", queuePointer);
     [self sendRemoteControlEventWithQueuePointer:@"nextTrack"];
 }
 
@@ -659,8 +662,8 @@
     NSString *duration = [[NSNumber numberWithInteger:audioDurationSeconds] stringValue];
     NSString *elapsed = [[NSNumber numberWithInteger:audioCurrentTimeSeconds] stringValue];
 
-//    NSLog(@"RCPlayer updateMusicControls: duration %@", duration);
-//    NSLog(@"RCPlayer updateMusicControls: elapsed %@", elapsed);
+    //    NSLog(@"RCPlayer updateMusicControls: duration %@", duration);
+    //    NSLog(@"RCPlayer updateMusicControls: elapsed %@", elapsed);
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         UIImage *image = nil;
@@ -699,18 +702,18 @@
         CGImageRef cgref = [image CGImage];
         CIImage *cim = [image CIImage];
         if (cim != nil || cgref != NULL) {
-//            NSLog(@"RCPlayer is playing status: %@", [[NSNumber numberWithBool:playerIsPlaying] stringValue]);
+            //            NSLog(@"RCPlayer is playing status: %@", [[NSNumber numberWithBool:playerIsPlaying] stringValue]);
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (NSClassFromString(@"MPNowPlayingInfoCenter")) {
                     MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc] initWithImage: image];
                     MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo = [NSDictionary dictionaryWithObjectsAndKeys:
-                                             artist, MPMediaItemPropertyArtist,
-                                             title, MPMediaItemPropertyTitle,
-                                             album, MPMediaItemPropertyAlbumTitle,
-                                             artwork, MPMediaItemPropertyArtwork,
-                                             duration, MPMediaItemPropertyPlaybackDuration,
-                                             elapsed, MPNowPlayingInfoPropertyElapsedPlaybackTime,
-                                             [NSNumber numberWithFloat:(playerIsPlaying ? 1.0f : 0.0f)], MPNowPlayingInfoPropertyPlaybackRate, nil];
+                                                                           artist, MPMediaItemPropertyArtist,
+                                                                           title, MPMediaItemPropertyTitle,
+                                                                           album, MPMediaItemPropertyAlbumTitle,
+                                                                           artwork, MPMediaItemPropertyArtwork,
+                                                                           duration, MPMediaItemPropertyPlaybackDuration,
+                                                                           elapsed, MPNowPlayingInfoPropertyElapsedPlaybackTime,
+                                                                           [NSNumber numberWithFloat:(playerIsPlaying ? 1.0f : 0.0f)], MPNowPlayingInfoPropertyPlaybackRate, nil];
                 }
             });
         }
@@ -727,7 +730,7 @@
     NSNumber *value = [command.arguments objectAtIndex:0];
     if ([value isKindOfClass:[NSNull class]]) return;
     shuffling = [value intValue];
-//    NSLog(@"shuffling - %d", shuffling);
+    //    NSLog(@"shuffling - %d", shuffling);
 }
 
 - (void)setCurrentTimeJS:(CDVInvokedUrlCommand*)command
@@ -735,7 +738,7 @@
     NSNumber *selectedTime = [command.arguments objectAtIndex:0];
     if ([selectedTime isKindOfClass:[NSNull class]]) return;
 
-//    NSLog(@"RCPlayer setCurrentTimeJS, %@", selectedTime);
+    //    NSLog(@"RCPlayer setCurrentTimeJS, %@", selectedTime);
     [self setCurrentTimeForPlayer:[selectedTime intValue]];
 }
 
@@ -745,17 +748,10 @@
     subscribeCallbackID = command.callbackId;
 }
 
-- (void)sendRemoteControlEvent:(NSString*)event
-{
-//    NSLog(@"RCPlayer: Remote control event, %@", event);
-    // Send event in JS env
-    [self sendDataToJS:@{@"event": event}];
-}
-
 - (void)sendRemoteControlEventWithQueuePointer:(NSString*)event
 {
     NSString *pointer = [[NSNumber numberWithInteger:queuePointer] stringValue];
-    [self sendDataToJS:@{@"event": @{event: pointer}}];
+    [self sendDataToJS:@{@"event": @{@"name": event, @"index": pointer}}];
 }
 
 // Send any data back to JS env through subscribe callback
@@ -790,14 +786,14 @@
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
                         change:(NSDictionary *)change context:(void *)context {
-//    NSLog(@"observeValueForKeyPath %@", keyPath);
+    //    NSLog(@"observeValueForKeyPath %@", keyPath);
 
     if ([keyPath isEqualToString:@"status"] && playerShouldPlayWhenItWillBeReady) {
         AVPlayerItem *item = (AVPlayerItem *)object;
-        if ([item.accessibilityValue containsString:shouldPlayWhenPlayerWillBeReady]) {
-//            NSLog(@"observeValueForKeyPath AVPlayerItemStatusReadyToPlay");
+        if ([item.accessibilityValue isEqualToString:shouldPlayWhenPlayerWillBeReady]) {
+            //            NSLog(@"observeValueForKeyPath AVPlayerItemStatusReadyToPlay");
             if (player.currentItem && shouldPlayWhenPlayerWillBeReady) {
-                if ([player.currentItem.accessibilityValue containsString:shouldPlayWhenPlayerWillBeReady]) {
+                if ([player.currentItem.accessibilityValue isEqualToString:shouldPlayWhenPlayerWillBeReady]) {
                     [player play];
                     [self updateMusicControls];
                 } else {
@@ -805,7 +801,7 @@
                 }
             }
         }
-//        NSLog(@"observeValueForKeyPath item code: %@", item.accessibilityValue);
+        //        NSLog(@"observeValueForKeyPath item code: %@", item.accessibilityValue);
     }
 
     if ([keyPath isEqualToString:@"status"]) {
@@ -830,10 +826,10 @@
 
             [self sendDataToJS:@{@"bufferProgress": percentString}];
 
-//            NSLog(@"RCPlayer song buffering progress %@", percentString);
+            //            NSLog(@"RCPlayer song buffering progress %@", percentString);
 
             if (percent >= 100) {
-//                NSLog(@"RCPlayer: loadedTimeRanges remove listener");
+                //                NSLog(@"RCPlayer: loadedTimeRanges remove listener");
                 @try {
                     [player.currentItem removeObserver:self forKeyPath:@"loadedTimeRanges" context:nil];
                 } @catch (id anException) {}
@@ -843,7 +839,7 @@
 
     if ([keyPath isEqualToString:@"rate"]) {
         float rate = [change[NSKeyValueChangeNewKey] floatValue];
-//        NSLog(@"RCPlayer changed rate");
+        //        NSLog(@"RCPlayer changed rate");
         if (rate == 0.0) {
             // Playback stopped
             playerIsPlaying = false;
