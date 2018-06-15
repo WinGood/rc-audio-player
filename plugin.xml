@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
         id="cordova-plugin-rc-audio-player"
-        version="0.0.9">
+        version="0.0.10">
 
     <name>RCPlayer</name>
     <description>RCPlayer Plugin</description>

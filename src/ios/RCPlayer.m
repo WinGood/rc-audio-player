@@ -12,7 +12,7 @@
     NSError *setCategoryError = nil;
     ok = [audioSession setCategory:AVAudioSessionCategoryPlayback error:&setCategoryError];
     if (!ok) {
-        //        NSLog(@"RCPlayer setCategoryError: %s%@", __PRETTY_FUNCTION__, setCategoryError);
+        NSLog(@"RCPlayer setCategoryError: %s%@", __PRETTY_FUNCTION__, setCategoryError);
     }
 
     [audioSession setMode:AVAudioSessionModeDefault error:nil];
@@ -105,6 +105,8 @@
 
     if ([initQueue count] == 0) {
         queueWasInited = true;
+        [self removeObserversFromPlayerItems];
+        [player removeAllItems];
         if ([needAddToQueueWhenItWillBeInited count]) {
             [self addSongsInQueue:needAddToQueueWhenItWillBeInited];
         }
@@ -122,14 +124,17 @@
              dispatch_async(dispatch_get_main_queue(), ^
                             {
                                 // add information about song in the queue
-                                [queue replaceObjectAtIndex:i withObject:song];
+                                if ([queue count] > i) {
+                                    [queue replaceObjectAtIndex:i withObject:song];
+                                }
 
                                 AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
+                                playerItem.accessibilityValue = song.code;
                                 NSInteger previousIndex = i - 1;
 
                                 if (previousIndex != -1) {
                                     if ([player.itemsForPlayer count] > previousIndex) {
-                                        AVPlayerItem *previousItem = [player.items objectAtIndex:previousIndex];
+                                        AVPlayerItem *previousItem = [player.itemsForPlayer objectAtIndex:previousIndex];
                                         [player insertItem:playerItem afterItem: previousItem];
                                     } else {
                                         [player insertItem:playerItem afterItem: nil];
@@ -145,7 +150,6 @@
                                     }
                                 }
 
-                                playerItem.accessibilityValue = song.code;
                                 [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
                                 [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
 
@@ -211,6 +215,7 @@
              dispatch_async(dispatch_get_main_queue(), ^
                             {
                                 AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
+                                playerItem.accessibilityValue = currentSong.code;
                                 [queue replaceObjectAtIndex:indexInQueue withObject:currentSong];
 
                                 // TODO check this with multiple songs
@@ -221,7 +226,6 @@
                                     [player insertItem:playerItem afterItem: nil];
                                 }
 
-                                playerItem.accessibilityValue = currentSong.code;
                                 [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
                                 [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
 
@@ -303,6 +307,7 @@
                             {
                                 [queue insertObject:song atIndex:replaceByIndex];
                                 AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:audioAsset];
+                                playerItem.accessibilityValue = song.code;
 
                                 if (replaceByIndex == 0) {
                                     if ([player.itemsForPlayer count] > 0) {
@@ -321,7 +326,6 @@
                                     [player insertItem:playerItem afterItem:previousItem];
                                 }
 
-                                playerItem.accessibilityValue = song.code;
                                 [playerItem addObserver:that forKeyPath:@"status" options:NSKeyValueObservingOptionInitial context:nil];
                                 [playerItem addObserver:that forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionInitial context:nil];
                             });
@@ -365,17 +369,19 @@
 
 - (void)playAtIndex:(NSInteger)index
 {
-    int currentIndex = [player getIndex];
+    RCPlayerSong *songMeta = queue[index];
+    int currentPlayerIndex = [player getIndex];
+    int needToSwitchPlayerIndex = [self getSongIndexInPlayerQueueByCode:songMeta.code];
 
-    if (currentIndex < index) {
-        for (int i = currentIndex; i < index; i++) {
+    if (currentPlayerIndex < needToSwitchPlayerIndex) {
+        for (int i = currentPlayerIndex; i < needToSwitchPlayerIndex; i++) {
             [player advanceToNextItem];
         }
-    } else if (currentIndex > index) {
-        for (int i = currentIndex; i > index; i--) {
+    } else if (currentPlayerIndex > needToSwitchPlayerIndex) {
+        for (int i = currentPlayerIndex; i > needToSwitchPlayerIndex; i--) {
             [player playPreviousItem];
         }
-    } else {
+    } else if (needToSwitchPlayerIndex == 0) {
         [player play];
     }
 
@@ -411,6 +417,18 @@
             if ([queue[i].code isEqualToString:code]) {
                 index = i;
             }
+        }
+    }
+    return index;
+}
+
+- (int)getSongIndexInPlayerQueueByCode:(NSString*)code
+{
+    int index = -1;
+    for (int i = 0; i < [player.itemsForPlayer count]; i++) {
+        AVPlayerItem *playerItem = (AVPlayerItem *)player.itemsForPlayer[i];
+        if ([playerItem.accessibilityValue isEqualToString:code]) {
+            index = i;
         }
     }
     return index;
