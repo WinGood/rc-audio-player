@@ -336,6 +336,7 @@
 - (void)playTrack:(CDVInvokedUrlCommand*)command
 {
     NSString *shouldPlayCode = [command.arguments objectAtIndex:0];
+//    NSLog(@"shouldPlayCode %@", shouldPlayCode);
     if ([queue count] == 0 || queueWasInited == false) {
         playerShouldPlayWhenItWillBeReady = true;
         shouldPlayWhenPlayerWillBeReady = shouldPlayCode;
@@ -353,7 +354,7 @@
     }
 
     int findedIndex = [self getSongIndexInQueueByCode:shouldPlayCode];
-    //    NSLog(@"RCPlayer findedIndex: %d", findedIndex);
+//        NSLog(@"RCPlayer findedIndex: %d", findedIndex);
 
     if (findedIndex != -1) {
         //        NSLog(@"RCPlayer playTrack: %@", queue);
@@ -372,6 +373,7 @@
     RCPlayerSong *songMeta = queue[index];
     int currentPlayerIndex = [player getIndex];
     int needToSwitchPlayerIndex = [self getSongIndexInPlayerQueueByCode:songMeta.code];
+//    NSLog(@"needToSwitchPlayerIndex %d", needToSwitchPlayerIndex);
 
     if (currentPlayerIndex < needToSwitchPlayerIndex) {
         for (int i = currentPlayerIndex; i < needToSwitchPlayerIndex; i++) {
@@ -381,7 +383,7 @@
         for (int i = currentPlayerIndex; i > needToSwitchPlayerIndex; i--) {
             [player playPreviousItem];
         }
-    } else if (needToSwitchPlayerIndex == 0) {
+    } else {
         [player play];
     }
 
