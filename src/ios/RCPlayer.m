@@ -631,6 +631,8 @@
         if (queuePointer < ([queue count] - 1)) {
             queuePointer = queuePointer + 1;
             [self playAtIndex:queuePointer];
+        } else if ([queue count] == 1) {
+            [self setCurrentTimeForPlayer:0];
         } else if (queuePointer == [queue count] - 1) {
             queuePointer = 0;
             [self playAtIndex:queuePointer];
@@ -683,9 +685,6 @@
 
     NSString *duration = [[NSNumber numberWithInteger:audioDurationSeconds] stringValue];
     NSString *elapsed = [[NSNumber numberWithInteger:audioCurrentTimeSeconds] stringValue];
-
-    //    NSLog(@"RCPlayer updateMusicControls: duration %@", duration);
-    //    NSLog(@"RCPlayer updateMusicControls: elapsed %@", elapsed);
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         UIImage *image = nil;
